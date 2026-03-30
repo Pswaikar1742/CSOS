@@ -1,0 +1,95 @@
+{
+  "city": "Chhatrapati Sambhajinagar",
+  "assets": [
+    {
+      "unit_id": "BEAT-MARSHAL-CSN-04",
+      "dept": "police",
+      "unit_type": "BEAT MARSHAL",
+      "zone": "Kranti Chowk Beat",
+      "ward": "Ward 04",
+      "lat": 19.8762,
+      "lng": 75.3433
+    },
+    {
+      "unit_id": "CSN-P08",
+      "dept": "police",
+      "unit_type": "BEAT MARSHAL",
+      "zone": "Cidco Beat",
+      "ward": "Ward 08",
+      "lat": 19.882,
+      "lng": 75.321
+    },
+    {
+      "unit_id": "CSN-P12",
+      "dept": "police",
+      "unit_type": "BEAT MARSHAL",
+      "zone": "Kranti Chowk Beat",
+      "ward": "Ward 12",
+      "lat": 19.878,
+      "lng": 75.345
+    },
+    {
+      "unit_id": "BEAT-MARSHAL-CSN-17",
+      "dept": "police",
+      "unit_type": "BEAT MARSHAL",
+      "zone": "Aurangpura Beat",
+      "ward": "Ward 17",
+      "lat": 19.889,
+      "lng": 75.327
+    },
+    {
+      "unit_id": "BEAT-MARSHAL-CSN-22",
+      "dept": "police",
+      "unit_type": "BEAT MARSHAL",
+      "zone": "Jalna Road Corridor",
+      "ward": "Ward 22",
+      "lat": 19.873,
+      "lng": 75.35
+    },
+    {
+      "unit_id": "CSMC-GG-101",
+      "dept": "sanitation",
+      "unit_type": "GHANTA GAADI",
+      "zone": "CIDCO N-6",
+      "ward": "Ward 31",
+      "lat": 19.882,
+      "lng": 75.321
+    },
+    {
+      "unit_id": "CSMC-GG-205",
+      "dept": "sanitation",
+      "unit_type": "GHANTA GAADI",
+      "zone": "Aurangpura",
+      "ward": "Ward 19",
+      "lat": 19.888,
+      "lng": 75.329
+    },
+    {
+      "unit_id": "CSMC-SWM-405",
+      "dept": "sanitation",
+      "unit_type": "GHANTA GAADI",
+      "zone": "Zone 4 Truck",
+      "ward": "Ward 40",
+      "lat": 19.87,
+      "lng": 75.33
+    },
+    {
+      "unit_id": "CSMC-GG-312",
+      "dept": "sanitation",
+      "unit_type": "GHANTA GAADI",
+      "zone": "Kranti Chowk Sector",
+      "ward": "Ward 11",
+      "lat": 19.875,
+      "lng": 75.344
+    },
+    {
+      "unit_id": "CSMC-GG-418",
+      "dept": "sanitation",
+      "unit_type": "GHANTA GAADI",
+      "zone": "Waluj Industrial Belt",
+      "ward": "Ward 42",
+      "lat": 19.868,
+      "lng": 75.334
+    }
+  ]
+}

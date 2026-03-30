@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from fastapi import WebSocket
 
 
@@ -28,6 +29,17 @@ class ConnectionManager:
             for connection in list(self.active_connections.get(target, [])):
                 try:
                     await connection.send_text(message)
+                except Exception:
+                    if connection in self.active_connections.get(target, []):
+                        self.active_connections[target].remove(connection)
+
+    async def broadcast(self, message: str | dict, depts: list[str] | None = None) -> None:
+        payload = message if isinstance(message, str) else json.dumps(message)
+        targets = depts or list(self.active_connections.keys())
+        for target in targets:
+            for connection in list(self.active_connections.get(target, [])):
+                try:
+                    await connection.send_text(payload)
                 except Exception:
                     if connection in self.active_connections.get(target, []):
                         self.active_connections[target].remove(connection)

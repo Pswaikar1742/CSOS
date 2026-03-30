@@ -1,0 +1,6 @@
+vision/datasets/
+backend/Test (1)/
+node_modules
+.git
+__pycache__
+*.mp4

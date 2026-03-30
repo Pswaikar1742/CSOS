@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { Terminal, Cpu, Activity } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronUp, FileCode2 } from 'lucide-react';
 
 // ─── CSOS v2.0 Neural Stream Terminal ───
 // A right-sidebar terminal that displays live AI detection math.
@@ -9,28 +9,35 @@ import { Terminal, Cpu, Activity } from 'lucide-react';
 
 interface NeuralStreamProps {
   logs: string[];
-  accentColor?: string; // Tailwind text class override, default: text-emerald-400
 }
 
 function getLogColor(log: string): string {
-  if (log.startsWith('[SYS]')) return 'text-cyan-400';
-  if (log.startsWith('[DETECT]')) return 'text-amber-400';
-  if (log.startsWith('[MATH]')) return 'text-emerald-400';
+  if (log.includes('[ACTION_TAKEN]')) return 'text-emerald-700';
+  if (log.includes('[MATH]')) return 'text-blue-700';
+  if (log.includes('[DETECT]')) return 'text-[#B91C1C]';
+  return 'text-slate-700';
+}
+
+function getPrefixTone(prefix: string): string {
+  if (prefix === '[GOVERNANCE]') return 'text-amber-600';
+  if (prefix === '[DISPATCH]') return 'text-cyan-600';
+  if (prefix === '[AUDIT]') return 'text-violet-600';
+  if (prefix === '[DETECT]') return 'text-[#B91C1C]';
   return 'text-slate-500';
 }
 
-function getLogPrefix(log: string): string {
-  const match = log.match(/^\[([A-Z]+)\]/);
-  return match ? match[1] : 'LOG';
-}
-
-function getLogBody(log: string): string {
-  return log.replace(/^\[[A-Z]+\]\s*/, '');
+function splitPrefix(log: string): { prefix: string; body: string } {
+  const match = log.match(/^(\[[A-Z_-]+\])\s*(.*)$/);
+  if (!match) {
+    return { prefix: '[LOG]', body: log };
+  }
+  return { prefix: match[1], body: match[2] };
 }
 
 export default function NeuralStream({ logs }: NeuralStreamProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLogsLenRef = useRef(0);
+  const [open, setOpen] = useState(false);
 
   // Auto-scroll to bottom on new logs
   useEffect(() => {
@@ -41,61 +48,43 @@ export default function NeuralStream({ logs }: NeuralStreamProps) {
   }, [logs]);
 
   return (
-    <div className="flex flex-col h-full bg-black/60 backdrop-blur-md border-l border-slate-800">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-emerald-500" />
-          <span className="text-xs font-mono font-bold text-emerald-400 tracking-[0.2em]">
-            NEURAL STREAM
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <Cpu className="w-3 h-3 text-slate-600" />
-            <span className="text-[9px] font-mono text-slate-600">GPU: ACTIVE</span>
+    <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4 pointer-events-none">
+      <div className="pointer-events-auto rounded-xl border border-slate-300 bg-[#F3F4F6] shadow-sm overflow-hidden">
+        <button
+          onClick={() => setOpen((prev) => !prev)}
+          className="w-full flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-200"
+        >
+          <div className="flex items-center gap-2">
+            <FileCode2 className="h-4 w-4 text-[#1E3A8A]" />
+            <span className="text-xs font-semibold tracking-wide text-[#1E3A8A]">
+              Technical Sieve Proofs
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
-            <span className="text-[9px] font-mono text-emerald-500">{logs.length} EVENTS</span>
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span>{logs.length} logs</span>
+            {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </div>
-        </div>
-      </div>
+        </button>
 
-      {/* ── Log Area ── */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-0.5 scrollbar-thin"
-        style={{ scrollBehavior: 'smooth' }}
-      >
-        {logs.map((log, i) => (
+        <div className={`${open ? 'max-h-56' : 'max-h-0'} transition-all duration-200 overflow-hidden`}>
           <div
-            key={i}
-            className="flex items-start gap-2 py-0.5 group hover:bg-slate-900/50 rounded px-1 transition-colors"
+            ref={scrollRef}
+            className="overflow-y-auto p-3 space-y-1 font-mono text-[11px] leading-snug bg-[#F3F4F6]"
+            style={{ maxHeight: '14rem' }}
           >
-            {/* Timestamp */}
-            <span className="text-[9px] font-mono text-slate-700 shrink-0 mt-0.5 tabular-nums">
-              {String(Math.floor(i / 60)).padStart(2, '0')}:{String(i % 60).padStart(2, '0')}
-            </span>
-
-            {/* Prefix badge */}
-            <span className={`text-[9px] font-mono font-bold shrink-0 mt-0.5 ${getLogColor(log)}`}>
-              [{getLogPrefix(log)}]
-            </span>
-
-            {/* Log body */}
-            <span className="text-[11px] font-mono text-slate-400 leading-snug break-all">
-              {getLogBody(log)}
-            </span>
+            {logs.map((log, index) => (
+              (() => {
+                const { prefix, body } = splitPrefix(log);
+                return (
+                  <div key={`${log}-${index}`} className="flex items-start gap-2">
+                    <span className="text-slate-500 shrink-0">{String(index + 1).padStart(3, '0')}</span>
+                    <span className={`${getPrefixTone(prefix)} font-semibold shrink-0`}>{prefix}</span>
+                    <span className={`${getLogColor(log)} break-words`}>{body}</span>
+                  </div>
+                );
+              })()
+            ))}
           </div>
-        ))}
-
-        {/* Cursor blink */}
-        <div className="flex items-center gap-1 pt-1">
-          <span className="text-[9px] font-mono text-slate-700">
-            {String(Math.floor(logs.length / 60)).padStart(2, '0')}:{String(logs.length % 60).padStart(2, '0')}
-          </span>
-          <span className="inline-block w-2 h-3 bg-emerald-500 animate-pulse" />
         </div>
       </div>
     </div>

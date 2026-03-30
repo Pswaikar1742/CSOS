@@ -12,7 +12,7 @@ export default async function ProtectedLayout({
   const role = (cookieStore.get('csos_role')?.value ?? 'police') as CSOSRole;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="relative min-h-screen bg-[#F9FAFB]">
       <TopNav role={role} />
       <main className="pt-16">{children}</main>
       <RoleSwitcher currentRole={role} />

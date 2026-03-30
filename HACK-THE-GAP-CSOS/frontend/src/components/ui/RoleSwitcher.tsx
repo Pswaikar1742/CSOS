@@ -20,7 +20,7 @@ export default function RoleSwitcher({ currentRole }: { currentRole: CSOSRole })
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100]">
+    <div className="absolute bottom-4 left-4 z-[100]">
       {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
@@ -40,7 +40,7 @@ export default function RoleSwitcher({ currentRole }: { currentRole: CSOSRole })
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute bottom-full right-0 mb-2 w-48 bg-black/80 backdrop-blur-md border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
+        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-md border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
           <div className="px-3 py-2 border-b border-slate-800">
             <span className="text-[9px] font-mono text-slate-600 tracking-[0.2em]">
               ROLE SWITCHER

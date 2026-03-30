@@ -1,11 +1,10 @@
 fastapi
 uvicorn
+websockets
 redis
 asyncpg
 pandas
 requests
 opencv-python
 ultralytics
-langchain-openai
-langchain-core
 pydantic

@@ -9,9 +9,11 @@ export interface Incident {
   lng: number;
   location: string;
   confidence: number;
-  status: 'AWAITING_VERIFICATION' | 'DISPATCHED' | 'RESOLVED' | 'FALSE_ALARM';
+  status: 'AWAITING_VERIFICATION' | 'DISPATCHED' | 'RESOLVED' | 'FALSE_ALARM' | 'DISMISSED';
   imageUrl?: string;
   timestamp: string;
+  detectedAt: number;
+  dispatchPlan: string;
 }
 
 export const MOCK_INCIDENTS: Incident[] = [
@@ -27,6 +29,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     status: 'AWAITING_VERIFICATION',
     imageUrl: '/mock_weapon.jpg',
     timestamp: '12:42:18 IST',
+    detectedAt: Date.now() - 45_000,
+    dispatchPlan: 'Deploy nearest BEAT MARSHAL to secure perimeter and notify local command.',
   },
   {
     id: 'INC-994',
@@ -38,6 +42,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.87,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:43:05 IST',
+    detectedAt: Date.now() - 80_000,
+    dispatchPlan: 'Alert traffic patrol, secure collision zone, and request ambulance dispatch.',
   },
   {
     id: 'INC-996',
@@ -49,6 +55,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.72,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:50:22 IST',
+    detectedAt: Date.now() - 120_000,
+    dispatchPlan: 'Initiate CCTV zoom lock, dispatch beat vehicle, and start nearby checkpoint screening.',
   },
 
   // ── RTO ──
@@ -62,6 +70,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.98,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:44:30 IST',
+    detectedAt: Date.now() - 52_000,
+    dispatchPlan: 'Issue auto-flag to patrol squad and trigger digital challan workflow for stolen vehicle watch.',
   },
   {
     id: 'RTO-302',
@@ -73,6 +83,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.91,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:45:12 IST',
+    detectedAt: Date.now() - 65_000,
+    dispatchPlan: 'Generate speed violation docket, capture number plate evidence, and notify control room.',
   },
   {
     id: 'RTO-305',
@@ -84,6 +96,21 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.85,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:48:44 IST',
+    detectedAt: Date.now() - 95_000,
+    dispatchPlan: 'Issue e-challan with helmet violation code and route case to traffic adjudication queue.',
+  },
+  {
+    id: 'RTO-307',
+    type: 'POTHOLE DETECTED',
+    dept: 'rto',
+    lat: 19.8766,
+    lng: 75.3434,
+    location: 'Railway Station Road',
+    confidence: 0.89,
+    status: 'AWAITING_VERIFICATION',
+    timestamp: '12:49:17 IST',
+    detectedAt: Date.now() - 40_000,
+    dispatchPlan: 'Geo-tag pothole and notify road repair cell to barricade and patch within rapid response SLA.',
   },
 
   // ── Sanitation ──
@@ -98,6 +125,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     status: 'AWAITING_VERIFICATION',
     imageUrl: '/mock_garbage.jpg',
     timestamp: '12:46:50 IST',
+    detectedAt: Date.now() - 50_000,
+    dispatchPlan: 'Dispatch nearest GHANTA GAADI, assign sweep crew, and mark site for follow-up inspection.',
   },
   {
     id: 'SAN-108',
@@ -109,6 +138,8 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.76,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:47:33 IST',
+    detectedAt: Date.now() - 110_000,
+    dispatchPlan: 'Escalate to hazardous waste team and block area until safe containment is completed.',
   },
   {
     id: 'SAN-110',
@@ -120,26 +151,28 @@ export const MOCK_INCIDENTS: Incident[] = [
     confidence: 0.82,
     status: 'AWAITING_VERIFICATION',
     timestamp: '12:52:15 IST',
+    detectedAt: Date.now() - 130_000,
+    dispatchPlan: 'Dispatch GHANTA GAADI and alert ward supervisor for enforcement notice issuance.',
   },
 ];
 
 // ── Neural Stream Log Templates ──
 export const NEURAL_LOG_TEMPLATES = [
-  '[SYS] Neural Sieve v3.1 initialized — Redis TTL: 30s, Bloom filter: k=7',
-  '[DETECT] Frame {frame} — YOLOv8 inference complete. Objects: {count}',
-  '[MATH] Confidence vector: σ = {sigma}, μ = {mean} → threshold exceeded',
-  '[DETECT] Classification: {type} — bounding box [x1:{x1}, y1:{y1}, x2:{x2}, y2:{y2}]',
-  '[SYS] Bloom Filter check → duplicate_probability: {prob}',
-  '[MATH] Redis TTL dedup — key hash: {hash} — status: NEW_INCIDENT',
-  '[SYS] FastRouter → department classification: {dept}',
-  '[DETECT] ANPR plate extraction: {plate} — OCR confidence: {conf}',
-  '[MATH] Spatial clustering: DBSCAN ε=0.001, min_samples=2 → cluster_id: {cluster}',
-  '[SYS] WebSocket broadcast → channel: god_view, payload_size: {size}B',
-  '[DETECT] Frame {frame} — motion delta: {delta}px² — threshold: 500px²',
-  '[MATH] Kalman filter prediction — next_position: [{lat}, {lng}]',
-  '[SYS] Incident {id} promoted to AWAITING_VERIFICATION — TTL reset',
-  '[DETECT] Heatmap anomaly detected at grid [{gx},{gy}] — z-score: {zscore}',
-  '[MATH] Bayesian update → P(threat|evidence) = {posterior}',
+  '[GOVERNANCE] [ACTION_TAKEN] Neural Sieve v3.1 initialized — Redis TTL: 30s, Bloom filter: k=7',
+  '[GOVERNANCE] [SIEVE] Analyzing persistence for object {id} on frame {frame}...',
+  '[GOVERNANCE] [MATH] Confidence vector: σ = {sigma}, μ = {mean} → threshold exceeded',
+  '[GOVERNANCE] [DETECT] Classification: {type} — bounding box [x1:{x1}, y1:{y1}, x2:{x2}, y2:{y2}]',
+  '[GOVERNANCE] [MATH] IoU verified. Threat confirmed as STATIONARY.',
+  '[GOVERNANCE] [ACTION_TAKEN] Bloom filter de-dup complete → duplicate_probability: {prob}',
+  '[GOVERNANCE] [ACTION_TAKEN] Triggering Inter-Agency Bridge ({dept})...',
+  '[GOVERNANCE] [DETECT] ANPR plate extraction: {plate} — OCR confidence: {conf}',
+  '[GOVERNANCE] [MATH] Spatial clustering: DBSCAN ε=0.001, min_samples=2 → cluster_id: {cluster}',
+  '[GOVERNANCE] [ACTION_TAKEN] WebSocket broadcast → channel: god_view, payload_size: {size}B',
+  '[GOVERNANCE] [DETECT] Motion delta: {delta}px² — threshold: 500px²',
+  '[GOVERNANCE] [MATH] Kalman filter prediction — next_position: [{lat}, {lng}]',
+  '[GOVERNANCE] [ACTION_TAKEN] Incident {id} promoted to AWAITING_VERIFICATION — TTL reset',
+  '[GOVERNANCE] [DETECT] Heatmap anomaly detected at grid [{gx},{gy}] — z-score: {zscore}',
+  '[GOVERNANCE] [MATH] Bayesian update → P(threat|evidence) = {posterior}',
 ];
 
 export function generateRandomLog(): string {

@@ -1,0 +1,16 @@
+LicensePlate,VehicleModel,Color,ReasonCategory,Priority,Jurisdiction,Owner_UUID
+MH20-EE-4521,Swift,White,Stolen_Vehicle,CRITICAL,CSN_Police,POL-9921-XA
+MH20-AB-0007,Fortuner,Black,Hit_and_Run,CRITICAL,CSN_Police,POL-0071-ZZ
+MH20-FG-8842,Tiago,Grey,Expired_Fitness,MEDIUM,CSN_RTO,RTO-8842-BC
+MH12-PQ-1234,Commercial_Truck,Yellow,Illegal_Dumping_History,HIGH,CSMC_Sanitation,CSM-1234-LM
+MH20-DE-5566,Innova,Silver,Multiple_Signal_Jumps,LOW,Traffic_Police,TRF-5566-GH
+MH20-XY-9999,Verna,White,Suspicious_Activity,HIGH,CSN_Police,POL-9999-ST
+MH20-KL-7812,Baleno,Blue,Stolen_Vehicle,CRITICAL,CSN_Police,POL-7812-QW
+MH20-MN-3344,Ertiga,Red,Expired_Fitness,MEDIUM,CSN_RTO,RTO-3344-ER
+MH20-RS-9090,Activa,Black,No_Helmet_Violations,LOW,Traffic_Police,TRF-9090-NH
+MH20-TY-1616,Bolero,White,Illegal_Street_Parking,LOW,Traffic_Police,TRF-1616-PK
+MH20-HJ-4411,Creta,White,Stolen_Vehicle,CRITICAL,CSN_Police,POL-4411-CR
+MH20-BN-7722,Pickup_Truck,Blue,Unauthorized_Commercial_Use,HIGH,CSN_RTO,RTO-7722-UC
+MH20-PP-5309,City,Silver,Drunk_Driving_History,HIGH,Traffic_Police,TRF-5309-DD
+MH20-JK-1888,Tractor,Red,Restricted_Zone_Entry,MEDIUM,Traffic_Police,TRF-1888-RZ
+MH20-ZA-6001,Scooty,White,Suspicious_Reconnaissance,HIGH,CSN_Police,POL-6001-SR
