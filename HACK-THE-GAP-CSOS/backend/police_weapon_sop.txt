@@ -1,0 +1,129 @@
+CHHATRAPATI SAMBHAJINAGAR CITY POLICE & TRAFFIC DEPARTMENT
+POLICE SURVEILLANCE & RESPONSE STANDARD OPERATING PROCEDURE (SOP)
+
+Issued For: Integrated Command & Control Center (ICCC)
+System: ASCDCL Smart City Surveillance Grid
+Status: Smart City Pilot / Demo SOP
+
+
+1. PURPOSE
+
+This document defines the operational procedures for real-time crime detection, threat assessment, surveillance validation, and police response within the Chhatrapati Sambhajinagar city limits using the ASCDCL (Aurangabad Smart City Development Corporation Ltd.) CCTV network.
+
+
+2. CCTV JURISDICTION & SURVEILLANCE GRID
+
+All surveillance cameras are operated under ASCDCL and routed to the ICCC.
+
+Primary monitored zones include:
+- Kranti Chowk
+- Aurangpura Market
+- CIDCO N-6
+- Nirala Bazar
+- Garkheda
+- Waluj MIDC
+
+All vehicle registrations in city jurisdiction fall under MH-20 and MH-20-XX series.
+
+
+3. THREAT CLASSIFICATION LEVELS
+
+Level 1 Threat:
+- Unarmed verbal or physical altercation
+- Public disturbance without visible weapons
+- Group aggression or crowd escalation
+
+Level 2 Threat:
+- Presence of sharp object or handheld weapon
+- Knife, iron rod, bat, stick, or blunt object detected
+- Potential for immediate bodily harm
+
+Level 3 Threat:
+- Firearm detected
+- Pistol, revolver, country-made weapon
+- Active shooter risk or imminent lethal threat
+
+
+4. NEURAL DETECTION & VERIFICATION PROTOCOL
+
+1. AI vision system continuously scans CCTV feeds.
+2. A threat is considered valid only if detected with confidence greater than 85%.
+3. The detected object must persist for a minimum of 15 consecutive frames.
+4. Only verified detections are forwarded to Police Command to avoid false alarms.
+
+
+5. RESPONSE UNITS & DISPATCH AUTHORITY
+
+Available Units:
+- Cheetah Units: Two-wheeler rapid response bike patrols
+- PCR Vans: Four-wheeler emergency response vehicles
+- Traffic Interceptors: Junction interception units
+
+Dispatch Authority:
+- ICCC Central Police Command Desk
+
+
+6. RESPONSE RULES BY THREAT LEVEL
+
+Level 1:
+- Notify nearest police station
+- Live CCTV monitoring continues
+- No immediate field dispatch unless escalated
+
+Level 2:
+- Immediate dispatch of nearest Cheetah Unit
+- Inform Station House Officer (SHO)
+- PCR Van placed on standby
+
+Level 3:
+- Immediate dispatch of minimum two units (Cheetah + PCR Van)
+- Senior Inspector and ACP informed
+- Live feed locked for evidence review
+- Area cordoning initiated
+
+
+7. ANPR & VEHICLE INTERCEPTION PROTOCOL
+
+1. All detected number plates are scanned via ANPR.
+2. Plates are checked against Police and RTO blacklist databases.
+3. If a vehicle is marked BLACKLISTED:
+   - ANPR grid is locked
+   - Interception is initiated at the next major junction
+   - Priority junctions include Kranti Chowk and CIDCO traffic signals
+4. MH-20 series plates receive priority matching.
+
+
+8. EVIDENCE PRESERVATION RULES
+
+1. For all Level 2 and Level 3 incidents:
+   - System must capture at least 3 image frames of the weapon.
+2. Each frame must contain:
+   - Timestamp
+   - Camera ID
+   - Location or ward identifier
+3. Metadata is stored in an immutable police audit log.
+4. Raw video frames are retained only as per legal and investigation requirements.
+
+
+9. OFFICER SAFETY & ENGAGEMENT RULES
+
+- Solo engagement is prohibited for Level 2 and Level 3 threats.
+- Field units must maintain safe distance until backup arrives.
+- ICCC maintains continuous live monitoring until incident closure.
+
+
+10. SERVICE LEVEL AGREEMENT (SLA)
+
+Level 1 Response Time: Within 10 minutes  
+Level 2 Response Time: Within 5 minutes  
+Level 3 Response Time: Immediate dispatch within 2 minutes  
+
+
+11. EXAMPLE OPERATIONAL DIRECTIVE
+
+"Upon detection of a Level 2 threat in the Aurangpura market area, the central command must alert the nearest Cheetah bike patrol and lock the ANPR grid for MH-20 series vehicles."
+
+
+Issued By:
+Chhatrapati Sambhajinagar City Police
+Smart City & ICCC Operations Division
