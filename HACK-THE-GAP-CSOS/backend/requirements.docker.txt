@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+websockets
+redis
+asyncpg
+pandas
+requests
+pydantic
+langchain-core
+langchain-openai
