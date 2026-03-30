@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from .db_connector import log_verified_threat
 
 
 VERIFICATION_THRESHOLD = 5
 THREAT_TTL_SECONDS = 5
 
 
-async def process_threat(payload: dict[str, Any], redis_client: Any) -> dict[str, Any]:
+async def process_threat(
+	payload: dict[str, Any],
+	redis_client: Any,
+	websocket_manager: Any,
+	db_pool: Any,
+) -> dict[str, Any]:
 	threat_key = (
 		f"threat:{payload['camera_id']}:{payload['class']}:{payload['bbox'][0]}:{payload['bbox'][1]}"
 	)
@@ -17,12 +25,23 @@ async def process_threat(payload: dict[str, Any], redis_client: Any) -> dict[str
 		await redis_client.expire(threat_key, THREAT_TTL_SECONDS)
 
 	verified = counter >= VERIFICATION_THRESHOLD
-	if verified:
-		print(f"✅ THREAT VERIFIED: {threat_key}")
 
-	return {
+	result = {
 		"verified": verified,
 		"counter": counter,
 		"threat_key": threat_key,
 		"threshold": VERIFICATION_THRESHOLD,
 	}
+
+	if verified:
+		await log_verified_threat(payload, pool=db_pool)
+
+		alert_payload = {
+			"type": "verified_threat",
+			"threat_key": threat_key,
+			"counter": counter,
+			"payload": payload,
+		}
+		await websocket_manager.broadcast(json.dumps(alert_payload))
+
+	return result
