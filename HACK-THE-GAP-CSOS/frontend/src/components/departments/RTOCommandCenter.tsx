@@ -12,12 +12,14 @@
  * - Traffic map with violation markers
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import TopNav from '@/components/ui/TopNav';
 import NeuralStream from '@/components/ui/NeuralStream';
 import StatsCard from '@/components/ui/StatsCard';
 import AlertBanner, { useAlerts } from '@/components/ui/AlertBanner';
+import LiveCameraOverlay from '@/components/ui/LiveCameraOverlay';
 import { useCSOSSocket } from '@/lib/socket';
 import type { Incident } from '@/lib/mock-data';
 import { Search, Car, FileWarning, IndianRupee, Gauge, Clock, CheckCircle2 } from 'lucide-react';
@@ -41,16 +43,67 @@ const MOCK_VAHAN_DB: Record<string, { owner: string; model: string; fitness: str
 };
 
 export default function RTOCommandCenter() {
+  const searchParams = useSearchParams();
   const { incidents, neuralLogs, connected } = useCSOSSocket('rto');
   const [focusedIncident, setFocusedIncident] = useState<Incident | null>(null);
+  const [selectedCamera, setSelectedCamera] = useState<{ cameraId: string; areaName: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<(typeof MOCK_VAHAN_DB)[string] | null>(null);
+  const [summary, setSummary] = useState<{ total_incidents: number; dispatched: number; by_dept: { rto: number } } | null>(null);
   const { alerts, addAlert, removeAlert } = useAlerts();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const queueRef = useRef<HTMLElement>(null);
+  const logsRef = useRef<HTMLDivElement>(null);
 
   const violations = useMemo(() =>
     incidents.filter((i) => i.status === 'AWAITING_VERIFICATION'),
     [incidents]
   );
+
+  useEffect(() => {
+    let mounted = true;
+    const loadSummary = async () => {
+      try {
+        const response = await fetch(`${BACKEND_HTTP_BASE}/api/dashboard-summary`);
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (mounted) {
+          setSummary({
+            total_incidents: Number(payload.total_incidents || 0),
+            dispatched: Number(payload.dispatched || 0),
+            by_dept: {
+              rto: Number(payload?.by_dept?.rto || 0),
+            },
+          });
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    void loadSummary();
+    const timer = window.setInterval(() => {
+      void loadSummary();
+    }, 10000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'map') {
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (view === 'incidents') {
+      queueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (view === 'reports') {
+      logsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    } else if (view === 'dashboard') {
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [searchParams]);
 
   const handleSearch = useCallback(() => {
     const normalized = searchQuery.replace(/[-\s]/g, '').toUpperCase();
@@ -83,7 +136,7 @@ export default function RTOCommandCenter() {
   }, [addAlert]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden" ref={rootRef}>
       <TopNav role="rto" alertCount={violations.length} />
 
       {/* Search Bar — Always Visible */}
@@ -124,8 +177,18 @@ export default function RTOCommandCenter() {
               </div>
             </div>
             <div className="mt-2 flex gap-2">
-              <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">View Full History</button>
-              <button className="px-3 py-1.5 text-xs font-semibold bg-amber-500 text-white rounded hover:bg-amber-600">Issue Challan</button>
+              <button
+                onClick={() => addAlert({ type: 'info', message: `Fetched backend history for ${searchQuery || 'vehicle record'}.` })}
+                className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                View Full History
+              </button>
+              <button
+                onClick={() => addAlert({ type: 'success', message: `Manual e-challan initiated for ${searchQuery || 'selected vehicle'}.` })}
+                className="px-3 py-1.5 text-xs font-semibold bg-amber-500 text-white rounded hover:bg-amber-600"
+              >
+                Issue Challan
+              </button>
             </div>
           </div>
         )}
@@ -134,17 +197,17 @@ export default function RTOCommandCenter() {
       {/* Stats row */}
       <div className="shrink-0 px-4 py-2 bg-slate-50 border-b border-slate-200">
         <div className="grid grid-cols-4 gap-3">
-          <StatsCard title="Vehicles Detected" value="12,453" icon={<Car className="h-4 w-4" />} variant="rto" />
-          <StatsCard title="Violations Today" value={incidents.length} icon={<FileWarning className="h-4 w-4" />} variant="rto" />
-          <StatsCard title="Challans Issued" value={incidents.filter(i => i.status === 'DISPATCHED').length} icon={<CheckCircle2 className="h-4 w-4" />} variant="rto" />
-          <StatsCard title="Revenue" value="₹2,34,500" icon={<IndianRupee className="h-4 w-4" />} variant="rto" trend="up" trendLabel="+12%" />
+          <StatsCard title="Live ANPR/Traffic Alerts" value={summary?.by_dept.rto ?? incidents.length} icon={<Car className="h-4 w-4" />} variant="rto" />
+          <StatsCard title="Violations In Queue" value={violations.length} icon={<FileWarning className="h-4 w-4" />} variant="rto" />
+          <StatsCard title="Dispatch Actions" value={summary?.dispatched ?? incidents.filter(i => i.status === 'DISPATCHED').length} icon={<CheckCircle2 className="h-4 w-4" />} variant="rto" />
+          <StatsCard title="Backend Link" value={connected ? 'LIVE' : 'DEGRADED'} icon={<IndianRupee className="h-4 w-4" />} variant={connected ? 'sanitation' : 'default'} trend={connected ? 'up' : 'down'} trendLabel={connected ? 'WS connected' : 'using fallback'} />
         </div>
       </div>
 
       {/* Main 2-Column Layout */}
       <div className="flex-1 flex gap-3 p-3 overflow-hidden">
         {/* Left: Map (60%) */}
-        <section className="w-3/5 relative rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <section className="w-3/5 relative rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" id="map-panel">
           <div className="absolute top-3 left-3 z-20 px-3 py-2 rounded-md bg-white/95 border border-slate-200 shadow-sm">
             <h2 className="text-xs font-bold tracking-wide text-[#1E40AF]">RTO COMMAND — Traffic Map</h2>
             <p className="text-[10px] text-slate-500">Violation locations & traffic cameras</p>
@@ -152,14 +215,25 @@ export default function RTOCommandCenter() {
           <CityMap
             incidents={incidents}
             markerColor="#3b82f6"
+            deptScope="rto"
             onIncidentClick={setFocusedIncident}
             focusIncident={focusedIncident}
+            onCameraNodeClick={(cameraId, areaName) => setSelectedCamera({ cameraId, areaName })}
           />
-          <NeuralStream logs={neuralLogs} />
+          <div ref={logsRef} id="reports-panel">
+            <NeuralStream logs={neuralLogs} />
+          </div>
+          {selectedCamera && (
+            <LiveCameraOverlay
+              cameraId={selectedCamera.cameraId}
+              areaName={selectedCamera.areaName}
+              onClose={() => setSelectedCamera(null)}
+            />
+          )}
         </section>
 
         {/* Right: Violation Queue (40%) */}
-        <section className="w-2/5 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <section className="w-2/5 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col" ref={queueRef} id="incidents-panel">
           <div className="px-4 py-3 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-[#1E40AF] tracking-wide">Violation Queue</h3>

@@ -26,25 +26,19 @@ export default function RoleSwitcher({ currentRole }: { currentRole: CSOSRole })
       {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
-        className={`
-          flex items-center gap-2 px-3 py-2 rounded-lg
-          bg-black/70 backdrop-blur-md border border-slate-800
-          text-[10px] font-mono text-slate-500
-          hover:text-slate-300 hover:border-slate-600
-          transition-all duration-200
-        `}
+        className="flex items-center gap-2 px-3 py-2 rounded border-2 border-slate-300 bg-white text-[10px] font-semibold text-[#002147] hover:bg-slate-50 transition-colors"
         title="Switch Role (Demo)"
       >
         <Eye className="w-3 h-3" />
-        <span className="tracking-wider">RBAC</span>
+        <span className="tracking-wide uppercase">RBAC</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute bottom-full left-0 mb-2 w-48 bg-black/80 backdrop-blur-md border border-slate-800 rounded-lg overflow-hidden shadow-2xl">
-          <div className="px-3 py-2 border-b border-slate-800">
-            <span className="text-[9px] font-mono text-slate-600 tracking-[0.2em]">
+        <div className="absolute bottom-full left-0 mb-2 w-56 bg-white border-2 border-slate-300 rounded overflow-hidden shadow-sm">
+          <div className="px-3 py-2 border-b-2 border-slate-300 bg-slate-50">
+            <span className="text-[9px] font-semibold text-[#002147] tracking-wide uppercase">
               ROLE SWITCHER
             </span>
           </div>
@@ -57,17 +51,17 @@ export default function RoleSwitcher({ currentRole }: { currentRole: CSOSRole })
                 onClick={() => switchRole(role)}
                 className={`
                   w-full flex items-center justify-between px-3 py-2.5
-                  text-xs font-mono tracking-wider
-                  hover:bg-slate-900/60 transition-all duration-150
-                  ${isActive ? `${theme.textClass} font-bold` : 'text-slate-500'}
+                  text-xs font-medium tracking-wide
+                  hover:bg-slate-100 transition-colors
+                  ${isActive ? 'text-[#002147] bg-blue-900/10' : 'text-slate-700'}
                 `}
               >
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${theme.bgAccentClass} ${isActive ? 'animate-pulse' : 'opacity-40'}`} />
+                  <span className={`w-2 h-2 rounded-full ${theme.bgAccentClass} ${isActive ? '' : 'opacity-50'}`} />
                   {theme.label}
                 </div>
                 {isActive && (
-                  <span className="text-[9px] text-slate-600">ACTIVE</span>
+                  <span className="text-[9px] text-[#138808] font-semibold">ACTIVE</span>
                 )}
               </button>
             );

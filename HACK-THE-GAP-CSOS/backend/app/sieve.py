@@ -4,11 +4,22 @@ import json
 from typing import Any
 
 from .agents import enrich_anpr_alert, generate_dispatch_plan, load_sop_context
+from .camera_registry import resolve_camera_context
 from .db_connector import log_verified_threat
 
 
 VERIFICATION_THRESHOLD = 5
 THREAT_TTL_SECONDS = 5
+
+
+def _to_float(value: Any) -> float | None:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    if result != result:
+        return None
+    return result
 
 
 async def _emit_thinking_log(websocket_manager: Any, message: str) -> None:
@@ -70,6 +81,25 @@ async def process_threat(
         else:
             enriched_payload = payload
 
+        resolved_context = resolve_camera_context(
+            camera_id=str(enriched_payload.get("camera_id") or "").strip() or None,
+            area_hint=str(enriched_payload.get("ward") or enriched_payload.get("location") or "").strip() or None,
+            lat=_to_float(enriched_payload.get("latitude", enriched_payload.get("lat"))),
+            lng=_to_float(enriched_payload.get("longitude", enriched_payload.get("lng"))),
+        )
+
+        if resolved_context.get("latitude") is not None:
+            enriched_payload["latitude"] = float(resolved_context["latitude"])
+            enriched_payload["lat"] = float(resolved_context["latitude"])
+        if resolved_context.get("longitude") is not None:
+            enriched_payload["longitude"] = float(resolved_context["longitude"])
+            enriched_payload["lng"] = float(resolved_context["longitude"])
+        if resolved_context.get("area_name"):
+            enriched_payload["ward"] = str(resolved_context["area_name"])
+            enriched_payload["location"] = str(resolved_context["area_name"])
+        if resolved_context.get("node_id"):
+            enriched_payload["node_id"] = str(resolved_context["node_id"])
+
         incident_id = await log_verified_threat(enriched_payload, pool=db_pool)
 
         sop_context = str(enriched_payload.get("sop_context") or load_sop_context(enriched_payload.get("class", "")))
@@ -79,7 +109,10 @@ async def process_threat(
             "type": "verified_threat",
             "incident_id": incident_id,
             "threat_key": threat_key,
-            "payload": enriched_payload,
+            "payload": {
+                **enriched_payload,
+                "dispatch_plan": dispatch_plan,
+            },
             "dispatch_plan": dispatch_plan,
         }
 
@@ -111,14 +144,14 @@ async def process_threat(
         )
 
         if event_class == "pothole":
-            pothole_lat = float(enriched_payload.get("latitude", enriched_payload.get("lat", 19.8762)))
-            pothole_lng = float(enriched_payload.get("longitude", enriched_payload.get("lng", 75.3433)))
-            pothole_ward = str(enriched_payload.get("ward") or "Railway Station Road")
+            pothole_lat = _to_float(enriched_payload.get("latitude", enriched_payload.get("lat")))
+            pothole_lng = _to_float(enriched_payload.get("longitude", enriched_payload.get("lng")))
+            pothole_ward = str(enriched_payload.get("ward") or "Unknown Area")
             await _emit_thinking_log(
                 websocket_manager,
                 (
                     f"[POTHOLE_ALERT] Geo-tagged pothole logged at {pothole_ward} "
-                    f"({pothole_lat:.4f}, {pothole_lng:.4f})."
+                    f"({(pothole_lat if pothole_lat is not None else 0):.4f}, {(pothole_lng if pothole_lng is not None else 0):.4f})."
                 ),
             )
 
@@ -150,8 +183,9 @@ async def process_threat(
                 "message": bridge_message,
                 "payload": {
                     "class": "inter_agency_alert",
-                    "lat": enriched_payload.get("latitude", enriched_payload.get("lat", 19.8762)),
-                    "lng": enriched_payload.get("longitude", enriched_payload.get("lng", 75.3433)),
+                    "lat": enriched_payload.get("latitude", enriched_payload.get("lat")),
+                    "lng": enriched_payload.get("longitude", enriched_payload.get("lng")),
+                    "ward": enriched_payload.get("ward"),
                     "description": bridge_message,
                     "camera_id": enriched_payload.get("camera_id"),
                 },

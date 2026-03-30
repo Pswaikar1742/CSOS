@@ -1,7 +1,7 @@
 'use client';
 
-import PoliceCommandCenter from '@/components/departments/PoliceCommandCenter';
+import CommandCenter from '@/components/ui/CommandCenter';
 
 export default function PolicePage() {
-  return <PoliceCommandCenter />;
+  return <CommandCenter role="police" dept="police" />;
 }

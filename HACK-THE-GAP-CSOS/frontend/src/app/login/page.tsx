@@ -18,10 +18,11 @@ export default function LoginPage() {
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const maxAge = 60 * 60 * 8;
-    document.cookie = `csos_role=${selectedRole}; path=/; max-age=${maxAge}`;
-    document.cookie = `csos_operator=${encodeURIComponent(operatorId || 'operator')}; path=/; max-age=${maxAge}`;
+    document.cookie = `csos_role=${selectedRole}; path=/; max-age=${maxAge}; samesite=lax`;
+    document.cookie = `csos_operator=${encodeURIComponent(operatorId || 'operator')}; path=/; max-age=${maxAge}; samesite=lax`;
     void passkey;
-    router.push(selectedRole === 'god-view' ? '/god-view' : `/${selectedRole}`);
+    const roleHome = selectedRole === 'god-view' ? '/god-view' : `/${selectedRole}`;
+    router.push(`${roleHome}?view=dashboard`);
   };
 
   return (

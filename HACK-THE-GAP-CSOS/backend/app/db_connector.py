@@ -9,6 +9,7 @@ import asyncpg
 from asyncpg import Pool
 
 from redis.asyncio import Redis
+from .camera_registry import resolve_camera_context
 
 
 _db_pool: Pool | None = None
@@ -108,8 +109,40 @@ async def log_verified_threat(payload: dict[str, Any], pool: Pool | None = None)
     else:
         parsed_timestamp = datetime.now(timezone.utc)
 
-    latitude = float(payload.get("latitude", payload.get("lat", 19.8762)))
-    longitude = float(payload.get("longitude", payload.get("lng", 75.3433)))
+    def _to_float(value: Any) -> float | None:
+        try:
+            result = float(value)
+        except (TypeError, ValueError):
+            return None
+        if result != result:
+            return None
+        return result
+
+    raw_lat = _to_float(payload.get("latitude", payload.get("lat")))
+    raw_lng = _to_float(payload.get("longitude", payload.get("lng")))
+    context = resolve_camera_context(
+        camera_id=camera_id,
+        area_hint=str(payload.get("ward") or payload.get("location") or "").strip() or None,
+        lat=raw_lat,
+        lng=raw_lng,
+    )
+
+    latitude = _to_float(context.get("latitude"))
+    longitude = _to_float(context.get("longitude"))
+    area_name = str(context.get("area_name") or "").strip()
+    node_id = str(context.get("node_id") or "").strip()
+
+    if latitude is not None:
+        payload["latitude"] = latitude
+        payload["lat"] = latitude
+    if longitude is not None:
+        payload["longitude"] = longitude
+        payload["lng"] = longitude
+    if area_name:
+        payload["ward"] = area_name
+        payload["location"] = area_name
+    if node_id:
+        payload["node_id"] = node_id
 
     query = """
         INSERT INTO verified_incidents
@@ -267,4 +300,75 @@ async def get_recent_incident_points(
         await connection.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
         rows = await connection.fetch(query, normalized_limit)
 
-    return [dict(row) for row in rows]
+    enriched_rows: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        context = resolve_camera_context(
+            camera_id=str(item.get("camera_id") or "").strip() or None,
+            area_hint=str(item.get("ward") or item.get("area_name") or "").strip() or None,
+            lat=item.get("latitude"),
+            lng=item.get("longitude"),
+        )
+
+        if context.get("latitude") is not None:
+            item["latitude"] = float(context["latitude"])
+        if context.get("longitude") is not None:
+            item["longitude"] = float(context["longitude"])
+
+        item["area_name"] = str(context.get("area_name") or item.get("camera_id") or "Unknown Area")
+        if context.get("node_id"):
+            item["node_id"] = context["node_id"]
+
+        enriched_rows.append(item)
+
+    return enriched_rows
+
+
+async def get_incident_summary(pool: Pool | None = None) -> dict[str, Any]:
+    target_pool = pool or _db_pool
+    if target_pool is None:
+        raise RuntimeError("PostgreSQL pool is not initialized. Call connect_to_db() first.")
+
+    query = """
+        SELECT
+            COUNT(*)::int AS total_incidents,
+            COUNT(*) FILTER (WHERE status = 'AWAITING_VERIFICATION')::int AS awaiting_verification,
+            COUNT(*) FILTER (WHERE status = 'DISPATCHED')::int AS dispatched,
+            COUNT(*) FILTER (WHERE status = 'RESOLVED')::int AS resolved,
+            COUNT(*) FILTER (WHERE LOWER(threat_type) IN ('weapon', 'accident', 'hazard'))::int AS police_incidents,
+            COUNT(*) FILTER (WHERE LOWER(threat_type) IN ('garbage', 'pothole'))::int AS sanitation_incidents,
+            COUNT(*) FILTER (WHERE LOWER(threat_type) IN ('anpr', 'anpr_detection'))::int AS rto_incidents,
+            MAX(timestamp) AS latest_event_at
+        FROM verified_incidents;
+    """
+
+    async with target_pool.acquire() as connection:
+        row = await connection.fetchrow(query)
+
+    if row is None:
+        return {
+            "total_incidents": 0,
+            "awaiting_verification": 0,
+            "dispatched": 0,
+            "resolved": 0,
+            "by_dept": {
+                "police": 0,
+                "sanitation": 0,
+                "rto": 0,
+            },
+            "latest_event_at": None,
+        }
+
+    item = dict(row)
+    return {
+        "total_incidents": int(item.get("total_incidents") or 0),
+        "awaiting_verification": int(item.get("awaiting_verification") or 0),
+        "dispatched": int(item.get("dispatched") or 0),
+        "resolved": int(item.get("resolved") or 0),
+        "by_dept": {
+            "police": int(item.get("police_incidents") or 0),
+            "sanitation": int(item.get("sanitation_incidents") or 0),
+            "rto": int(item.get("rto_incidents") or 0),
+        },
+        "latest_event_at": item.get("latest_event_at"),
+    }

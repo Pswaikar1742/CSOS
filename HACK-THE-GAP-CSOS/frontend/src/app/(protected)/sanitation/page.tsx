@@ -1,7 +1,7 @@
 'use client';
 
-import SanitationCommandCenter from '@/components/departments/SanitationCommandCenter';
+import CommandCenter from '@/components/ui/CommandCenter';
 
 export default function SanitationPage() {
-  return <SanitationCommandCenter />;
+  return <CommandCenter role="sanitation" dept="sanitation" />;
 }

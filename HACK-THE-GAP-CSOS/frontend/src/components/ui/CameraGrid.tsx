@@ -1,148 +1,187 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import type { Incident } from '@/lib/mock-data';
 
 interface CameraGridProps {
   incidents: Incident[];
+  onSelectCamera?: (cameraId: string, areaName: string) => void;
 }
 
 type CameraCard = {
   cameraId: string;
   backendId: string;
   wardName: string;
-  status: 'LIVE' | 'ALERT' | 'OFFLINE';
+  status: 'LIVE' | 'ALERT';
   lastEvent: string;
 };
 
-// Map to actual backend camera IDs from multi_stream_detector.py
-const BACKEND_CAMERA_IDS = [
-  'CAM_CIDCO_N6',
-  'CAM_KRANTI_CHOWK',
-  'CAM_AURANGPURA',
-  'CAM_BEED_BYPASS',
-  'CAM_RAILWAY_STATION_ROAD',
-];
+type CameraNode = {
+  node_id: string;
+  camera_id: string;
+  area_name: string;
+  latitude: number;
+  longitude: number;
+};
 
 const BACKEND_HTTP_BASE = (process.env.NEXT_PUBLIC_BACKEND_HTTP_BASE || 'http://localhost:8000').replace(/\/$/, '');
 
-const BASE_CAMERAS: CameraCard[] = [
-  {
-    cameraId: 'CSN-CAM-001',
-    backendId: 'CAM_KRANTI_CHOWK',
-    wardName: 'WARD 12 - KRANTI CHOWK',
-    status: 'LIVE',
-    lastEvent: 'Routine traffic surveillance',
-  },
-  {
-    cameraId: 'CSN-CAM-014',
-    backendId: 'CAM_BEED_BYPASS',
-    wardName: 'WARD 22 - BEED BYPASS',
-    status: 'LIVE',
-    lastEvent: 'Vehicle monitoring active',
-  },
-  {
-    cameraId: 'CSN-CAM-023',
-    backendId: 'CAM_CIDCO_N6',
-    wardName: 'WARD 31 - CIDCO N-6',
-    status: 'LIVE',
-    lastEvent: 'Municipal watch active',
-  },
-  {
-    cameraId: 'CSN-CAM-031',
-    backendId: 'CAM_AURANGPURA',
-    wardName: 'WARD 17 - AURANGPURA',
-    status: 'LIVE',
-    lastEvent: 'Crowd density tracking',
-  },
-];
+function deriveCameraCards(incidents: Incident[], nodes: CameraNode[]): CameraCard[] {
+  return nodes.slice(0, 12).map((node) => {
+    const relatedIncident = incidents.find((incident) => {
+      const incidentLocation = incident.location.toLowerCase();
+      const nodeLocation = node.area_name.toLowerCase();
+      return incidentLocation.includes(nodeLocation) || nodeLocation.includes(incidentLocation);
+    });
 
-function deriveCameraCards(incidents: Incident[]): CameraCard[] {
-  const incidentCards = incidents.slice(0, 4).map((incident, index) => ({
-    cameraId: `CSN-CAM-${String(index + 101).padStart(3, '0')}`,
-    backendId: BACKEND_CAMERA_IDS[index % BACKEND_CAMERA_IDS.length],
-    wardName: `WARD ${String(index + 1).padStart(2, '0')} - ${incident.location.toUpperCase()}`,
-    status: incident.status === 'AWAITING_VERIFICATION' ? ('ALERT' as const) : ('LIVE' as const),
-    lastEvent: `${incident.type} (${Math.round(incident.confidence * 100)}%)`,
-  }));
-
-  return [...incidentCards, ...BASE_CAMERAS].slice(0, 4);
+    return {
+      cameraId: node.node_id,
+      backendId: node.camera_id,
+      wardName: node.area_name,
+      status: relatedIncident && relatedIncident.status === 'AWAITING_VERIFICATION' ? 'ALERT' : 'LIVE',
+      lastEvent: relatedIncident
+        ? `${relatedIncident.type} (${Math.round(relatedIncident.confidence * 100)}%)`
+        : 'No active threat on this node',
+    };
+  });
 }
 
-export default function CameraGrid({ incidents }: CameraGridProps) {
-  const cards = deriveCameraCards(incidents);
+export default function CameraGrid({ incidents, onSelectCamera }: CameraGridProps) {
+  const [nodes, setNodes] = useState<CameraNode[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<CameraCard | null>(null);
+  const [loadedStreams, setLoadedStreams] = useState<Record<string, boolean>>({});
+  const [failedStreams, setFailedStreams] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadNodes = async () => {
+      try {
+        const response = await fetch(`${BACKEND_HTTP_BASE}/api/camera-nodes`);
+        if (!response.ok) return;
+        const payload = await response.json();
+        const fetchedNodes: CameraNode[] = Array.isArray(payload?.nodes) ? (payload.nodes as CameraNode[]) : [];
+        if (mounted) {
+          setNodes(fetchedNodes);
+        }
+      } catch {
+        // noop
+      }
+    };
+
+    void loadNodes();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const cards = useMemo(() => deriveCameraCards(incidents, nodes), [incidents, nodes]);
+  const activeCamera = selectedCamera || cards[0] || null;
 
   return (
     <div className="h-full overflow-y-auto p-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {activeCamera && (
+        <div className="mb-3 rounded-lg border border-slate-200 bg-white p-2">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#1E3A8A]">LIVE FEED — {activeCamera.cameraId}</p>
+              <p className="text-[11px] text-slate-500">{activeCamera.wardName}</p>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-500">{activeCamera.backendId}</span>
+          </div>
+          <div className="relative aspect-video w-full overflow-hidden rounded border border-slate-200 bg-slate-900">
+            <img
+              src={`${BACKEND_HTTP_BASE}/api/video_feed/${activeCamera.backendId}`}
+              alt={`Live stream: ${activeCamera.wardName}`}
+              className="h-full w-full object-cover"
+              onLoad={() => {
+                setLoadedStreams((prev) => ({ ...prev, [activeCamera.backendId]: true }));
+                setFailedStreams((prev) => ({ ...prev, [activeCamera.backendId]: false }));
+              }}
+              onError={() => {
+                setFailedStreams((prev) => ({ ...prev, [activeCamera.backendId]: true }));
+                setLoadedStreams((prev) => ({ ...prev, [activeCamera.backendId]: false }));
+              }}
+            />
+            {!loadedStreams[activeCamera.backendId] && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                <div className="text-center">
+                  <div className="mb-2 text-sm font-semibold text-slate-300">
+                    {failedStreams[activeCamera.backendId] ? '📡 FEED UNAVAILABLE' : '📹 STREAM LOADING...'}
+                  </div>
+                  <div className="text-xs text-slate-500">{activeCamera.backendId}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => {
           const streamUrl = `${BACKEND_HTTP_BASE}/api/video_feed/${card.backendId}`;
           return (
             <article
               key={`${card.cameraId}-${card.backendId}`}
-              className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden"
+              onClick={() => {
+                setSelectedCamera(card);
+                onSelectCamera?.(card.backendId, card.wardName);
+              }}
+              className="cursor-pointer overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
             >
-              <div className="relative aspect-video bg-slate-900 border-b border-slate-200 flex items-center justify-center overflow-hidden">
-                {/* MJPEG Stream Container */}
+              <div className="relative aspect-video overflow-hidden border-b border-slate-200 bg-slate-900">
                 <img
                   src={streamUrl}
                   alt={`Live stream: ${card.wardName}`}
-                  className="absolute inset-0 w-full h-full object-cover bg-black"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    img.style.display = 'none';
+                  className="absolute inset-0 h-full w-full object-cover bg-black"
+                  onLoad={() => {
+                    setLoadedStreams((prev) => ({ ...prev, [card.backendId]: true }));
+                    setFailedStreams((prev) => ({ ...prev, [card.backendId]: false }));
+                  }}
+                  onError={() => {
+                    setFailedStreams((prev) => ({ ...prev, [card.backendId]: true }));
+                    setLoadedStreams((prev) => ({ ...prev, [card.backendId]: false }));
                   }}
                 />
-
-                {/* Fallback text if stream unavailable */}
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                  <div className="text-center">
-                    <div className="text-sm font-semibold text-slate-400 mb-2">📹 STREAM LOADING...</div>
-                    <div className="text-xs text-slate-500">{card.backendId}</div>
+                {!loadedStreams[card.backendId] && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                    <div className="text-center">
+                      <div className="mb-2 text-sm font-semibold text-slate-300">
+                        {failedStreams[card.backendId] ? '📡 FEED UNAVAILABLE' : '📹 STREAM LOADING...'}
+                      </div>
+                      <div className="text-xs text-slate-500">{card.backendId}</div>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Camera ID Badge */}
-                <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-1 rounded z-10">
-                  CAM-ID: {card.cameraId}
+                <div className="absolute left-2 top-2 z-10 rounded bg-black/70 px-2 py-1 text-[10px] font-semibold text-white">
+                  NODE: {card.cameraId}
                 </div>
-
-                {/* Ward Name Badge */}
-                <div className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-1 rounded z-10">
+                <div className="absolute bottom-2 left-2 z-10 rounded bg-black/70 px-2 py-1 text-[10px] font-semibold text-white">
                   {card.wardName}
                 </div>
-
-                {/* Status Indicator */}
                 <div
-                  className={`absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold ${
-                    card.status === 'ALERT'
-                      ? 'bg-red-500/90 text-white animate-pulse'
-                      : card.status === 'OFFLINE'
-                        ? 'bg-slate-500/90 text-white'
-                        : 'bg-emerald-500/90 text-white'
+                  className={`absolute right-2 top-2 z-10 rounded px-2 py-1 text-[10px] font-semibold ${
+                    card.status === 'ALERT' ? 'bg-red-500/90 text-white' : 'bg-emerald-500/90 text-white'
                   }`}
                 >
-                  <span className="w-2 h-2 bg-white rounded-full" aria-hidden="true" />
                   {card.status}
                 </div>
               </div>
 
-              {/* Camera Metadata */}
-              <div className="p-3 space-y-1.5">
+              <div className="space-y-1.5 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-[#1E3A8A]">{card.cameraId}</span>
                   <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                      card.status === 'ALERT'
-                        ? 'bg-red-100 text-[#B91C1C]'
-                        : card.status === 'OFFLINE'
-                          ? 'bg-slate-200 text-slate-600'
-                          : 'bg-emerald-100 text-[#059669]'
+                    className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
+                      card.status === 'ALERT' ? 'bg-red-100 text-[#B91C1C]' : 'bg-emerald-100 text-[#059669]'
                     }`}
                   >
                     {card.status}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 font-medium">{card.wardName}</p>
+                <p className="text-xs font-medium text-slate-600">{card.wardName}</p>
                 <p className="text-xs text-slate-500">Last event: {card.lastEvent}</p>
               </div>
             </article>

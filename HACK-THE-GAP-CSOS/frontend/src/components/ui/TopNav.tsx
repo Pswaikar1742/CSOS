@@ -18,7 +18,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Bell, Building2, Landmark, ShieldCheck, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, Clock } from 'lucide-react';
 import type { CSOSRole } from '@/lib/types';
 import { ROLE_THEMES } from '@/lib/types';
 
@@ -34,8 +35,8 @@ function getCookie(name: string): string {
 }
 
 export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
+  const router = useRouter();
   const theme = ROLE_THEMES[role];
-  const roleBadge = `[${theme.label}]`;
   const [currentTime, setCurrentTime] = useState('');
   const [operatorName, setOperatorName] = useState('');
 
@@ -62,22 +63,35 @@ export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
     return () => clearInterval(interval);
   }, []);
 
+  const goToIncidents = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('csos:navigate', { detail: { target: 'incidents' } }));
+    }
+    router.push(`/${role}?view=incidents`);
+  };
+
   return (
-    <header className="h-14 border-b border-slate-200 bg-white shadow-sm shrink-0">
+    <header className="h-16 border-b-2 border-slate-300 bg-white shadow-sm shrink-0 font-sans">
       <div className="h-full px-4 flex items-center justify-between gap-3">
         {/* Left: Logos + Title */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-md bg-[#1E3A8A] text-white flex items-center justify-center shadow-sm shrink-0">
-            <Landmark className="h-4 w-4" />
-          </div>
-          <div className="h-8 w-8 rounded-md bg-white border border-slate-300 text-[#1E3A8A] flex items-center justify-center shadow-sm shrink-0">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div className="hidden lg:flex flex-col leading-tight">
-            <span className="text-xs font-semibold text-[#1E3A8A] tracking-wide">
-              CSOS — Chhatrapati Sambhajinagar Operating System
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src="/placeholder-csmc.png"
+            alt="CSMC Logo"
+            className="h-10 w-10 rounded border-2 border-slate-300 bg-white object-contain shrink-0"
+          />
+          <img
+            src="/placeholder-smartcity.png"
+            alt="Smart City Mission Logo"
+            className="h-10 w-10 rounded border-2 border-slate-300 bg-white object-contain shrink-0"
+          />
+          <div className="hidden lg:flex flex-col leading-tight min-w-0">
+            <span className="text-xs font-bold text-[#002147] tracking-wide uppercase truncate">
+              CHHATRAPATI SAMBHAJINAGAR MUNICIPAL CORPORATION
             </span>
-            <span className="text-[10px] text-slate-500 tracking-wide">CSMC Smart City Mission</span>
+            <span className="text-[10px] text-slate-700 tracking-wide truncate">
+              Integrated Command &amp; Control Centre (ICCC) - Powered by CSOS
+            </span>
           </div>
         </div>
 
@@ -85,38 +99,38 @@ export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
         <div className="flex items-center gap-3">
           {/* Alert counter */}
           <button
-            className="relative h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 transition"
+            onClick={goToIncidents}
+            className="relative h-9 w-9 flex items-center justify-center rounded border-2 border-slate-300 hover:bg-slate-50 transition"
             aria-label={`${alertCount} active alerts`}
             title={`${alertCount} active alerts`}
           >
-            <Bell className="h-4 w-4 text-slate-600" />
+            <Bell className="h-4 w-4 text-[#002147]" />
             {alertCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white animate-pulse-alert">
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center rounded-full bg-[#FF9933] px-1 text-[10px] font-bold text-slate-900">
                 {alertCount > 99 ? '99+' : alertCount}
               </span>
             )}
           </button>
 
           {/* Live clock */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 font-mono tabular-nums">
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-700 font-mono tabular-nums">
             <Clock className="h-3.5 w-3.5" />
             <span>{currentTime || '--:--:--'}</span>
-            <span className="text-[10px] text-slate-400">IST</span>
+            <span className="text-[10px] text-slate-500">IST</span>
           </div>
 
           {/* Divider */}
           <div className="h-6 w-px bg-slate-200 hidden md:block" />
 
           {/* Officer name */}
-          <span className="hidden md:block text-xs text-slate-600 font-medium truncate max-w-[120px]">
+          <span className="hidden md:block text-xs text-slate-700 font-medium truncate max-w-[120px]">
             {operatorName}
           </span>
 
           {/* Role badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#1E3A8A] bg-[#1E3A8A]/5">
-            <ShieldCheck className="h-3.5 w-3.5 text-[#1E3A8A]" />
-            <span className="text-[11px] font-semibold text-[#1E3A8A] tracking-wide">
-              {roleBadge}
+          <div className="px-2.5 py-1.5 rounded border-2 border-[#002147] bg-[#002147] shadow-sm">
+            <span className="text-[11px] font-semibold text-white tracking-wide">
+              [ 👤 Logged in as: {operatorName || 'Nodal Officer'} ({theme.label}) ]
             </span>
           </div>
         </div>

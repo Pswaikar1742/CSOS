@@ -1,0 +1,31 @@
+Node ID,Area / Landmark Name,Assumed Latitude (°N),Assumed Longitude (°E),Expected Node Type
+CSN-001,Kranti Chowk,19.8725,75.3255,PTZ / ANPR
+CSN-002,CIDCO (Connaught Place),19.8829,75.3618,Fixed Dome
+CSN-003,Mukundwadi Circle,19.865,75.381,PTZ / RLVD
+CSN-004,Nirala Bazar,19.8786,75.3258,Fixed Bullet
+CSN-005,TV Center / Jalgaon Road,19.895,75.334,PTZ
+CSN-006,Central Bus Stand (CBS),19.876,75.32,Panoramic / PTZ
+CSN-007,Railway Station Area,19.86,75.31,PTZ / ANPR
+CSN-008,Beed Bypass Road (Devlai Sq),19.845,75.34,ANPR / RLVD
+CSN-009,Osmanpura,19.868,75.322,Fixed Bullet
+CSN-010,Gulmandi Market,19.88,75.33,Fixed Dome
+CSN-011,Shahganj Clock Tower,19.885,75.34,PTZ
+CSN-012,Roshan Gate,19.882,75.35,Fixed Bullet
+CSN-013,Bhadkal Gate,19.89,75.32,PTZ
+CSN-014,Mill Corner,19.895,75.315,PTZ / RLVD
+CSN-015,Waluj MIDC (Oasis Chowk),19.84,75.25,ANPR
+CSN-016,Chikalthana MIDC,19.87,75.4,ANPR / Fixed Bullet
+CSN-017,Harsul T-Point,19.92,75.345,PTZ
+CSN-018,Pundalik Nagar,19.865,75.355,Fixed Bullet
+CSN-019,Gajanan Maharaj Mandir Chowk,19.86,75.35,PTZ / RLVD
+CSN-020,Akashwani Chowk,19.87,75.34,PTZ / ANPR
+CSN-021,Mahavir Chowk (Baba Petrol Pump),19.875,75.315,PTZ / RLVD
+CSN-022,Seven Hills Flyover,19.872,75.35,PTZ
+CSN-023,Garkheda Parisar,19.86,75.345,Fixed Bullet
+CSN-024,Sutgirni Chowk,19.855,75.34,PTZ
+CSN-025,Prozone Mall Intersection,19.885,75.365,PTZ / ANPR
+CSN-026,Cannaught Garden,19.882,75.362,Fixed Dome
+CSN-027,Delhi Gate,19.895,75.325,Fixed Bullet
+CSN-028,Makai Gate,19.905,75.31,PTZ
+CSN-029,Cantonment Area (Chhawani),19.89,75.3,ANPR
+CSN-030,Padegaon,19.895,75.28,Fixed Bullet

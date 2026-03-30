@@ -13,6 +13,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Map,
   LayoutDashboard,
@@ -45,8 +47,44 @@ const ROLE_SIDEBAR_ACCENT: Record<CSOSRole, string> = {
 };
 
 export default function CommandLayout({ role, children }: CommandLayoutProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [activeNav, setActiveNav] = useState('dashboard');
+
+  const roleBasePath: Record<CSOSRole, string> = {
+    police: '/police',
+    rto: '/rto',
+    sanitation: '/sanitation',
+    'god-view': '/god-view',
+  };
+
+  const routeRole: CSOSRole = pathname.startsWith('/police')
+    ? 'police'
+    : pathname.startsWith('/rto')
+      ? 'rto'
+      : pathname.startsWith('/sanitation')
+        ? 'sanitation'
+        : pathname.startsWith('/god-view')
+          ? 'god-view'
+          : role;
+
+  const navPathFor = useCallback((target: string): string => {
+    const base = roleBasePath[routeRole];
+    if (target === 'map') return `${base}?view=map`;
+    if (target === 'incidents') return `${base}?view=incidents`;
+    if (target === 'reports') return `${base}?view=reports`;
+    return `${base}?view=dashboard`;
+  }, [routeRole]);
+
+  const navigateTo = useCallback((target: string) => {
+    setActiveNav(target);
+    router.push(navPathFor(target));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('csos:navigate', { detail: { target } }));
+    }
+  }, [navPathFor, router]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -54,45 +92,54 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
     }
     if (e.altKey && e.key.toLowerCase() === 'm') {
       e.preventDefault();
-      setActiveNav('map');
+      navigateTo('map');
     }
     if (e.altKey && e.key.toLowerCase() === 'd') {
       e.preventDefault();
-      setActiveNav('dashboard');
+      navigateTo('dashboard');
     }
-  }, []);
+  }, [navigateTo]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const accentBorder = ROLE_SIDEBAR_ACCENT[role];
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'map' || view === 'incidents' || view === 'reports' || view === 'dashboard') {
+      setActiveNav(view);
+      return;
+    }
+    setActiveNav('dashboard');
+  }, [searchParams]);
+
+  const accentBorder = ROLE_SIDEBAR_ACCENT[routeRole];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F0F2F5]" data-role={role}>
+    <div className="flex h-screen overflow-hidden bg-slate-50" data-role={routeRole}>
       {/* ── Left Sidebar ── */}
       <aside
         className={`
-          relative flex flex-col border-r border-slate-200 bg-white shadow-sm
+          relative flex flex-col border-r-2 border-slate-300 bg-white shadow-sm
           transition-all duration-200 ease-in-out shrink-0
           ${collapsed ? 'w-16' : 'w-52'}
         `}
       >
         {/* Sidebar header */}
-        <div className={`h-14 flex items-center px-3 border-b border-slate-200 gap-2`}>
-          <div className={`h-8 w-8 rounded-lg bg-[#1E3A8A] text-white flex items-center justify-center shrink-0`}>
+        <div className="h-14 flex items-center px-3 border-b-2 border-slate-300 gap-2">
+          <div className="h-8 w-8 rounded bg-blue-900 text-white flex items-center justify-center shrink-0">
             <Radio className="h-4 w-4" />
           </div>
           {!collapsed && (
-            <span className="text-xs font-bold tracking-wider text-[#1E3A8A] truncate">
+            <span className="text-xs font-bold tracking-wide uppercase text-[#002147] truncate">
               CSOS v2.0
             </span>
           )}
         </div>
 
         {/* Role indicator bar */}
-        <div className={`h-1 ${accentBorder} border-b-2`} />
+        <div className={`h-1 ${accentBorder} border-b border-[#FF9933]`} />
 
         {/* Nav items */}
         <nav className="flex-1 py-3 px-2 space-y-1">
@@ -100,14 +147,15 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
             const Icon = item.icon;
             const isActive = activeNav === item.id;
             return (
-              <button
+              <Link
                 key={item.id}
+                href={navPathFor(item.id)}
                 onClick={() => setActiveNav(item.id)}
                 className={`
                   w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                   transition-colors duration-150
                   ${isActive
-                    ? 'bg-[#1E3A8A]/10 text-[#1E3A8A]'
+                    ? 'bg-blue-900/10 text-[#002147] border border-slate-300'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
                   }
                 `}
@@ -118,7 +166,7 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
                 {!collapsed && (
                   <span className="truncate">{item.label}</span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -126,7 +174,7 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="h-10 flex items-center justify-center border-t border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+          className="h-10 flex items-center justify-center border-t-2 border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

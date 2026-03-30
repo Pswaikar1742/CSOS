@@ -13,25 +13,15 @@
 
 import StatusDot from '@/components/ui/StatusDot';
 
-type UnitStatus = 'available' | 'busy' | 'idle';
+export type UnitStatus = 'available' | 'busy' | 'idle';
 
-interface PatrolUnit {
+export interface PatrolUnit {
   id: string;
   name: string;
   area: string;
   status: UnitStatus;
   lastUpdate: string;
 }
-
-const MOCK_PATROL_UNITS: PatrolUnit[] = [
-  { id: 'QRT-01', name: 'Quick Response Team 01', area: 'Kranti Chowk', status: 'available', lastUpdate: '2 mins ago' },
-  { id: 'QRT-02', name: 'Quick Response Team 02', area: 'Mondha Market', status: 'available', lastUpdate: '5 mins ago' },
-  { id: 'PATROL-12', name: 'Beat Patrol 12', area: 'Jalna Road', status: 'busy', lastUpdate: '12 mins ago' },
-  { id: 'PATROL-08', name: 'Beat Patrol 08', area: 'Aurangpura', status: 'busy', lastUpdate: '8 mins ago' },
-  { id: 'PCR-VAN-3', name: 'PCR Van 3', area: 'CIDCO', status: 'idle', lastUpdate: '25 mins ago' },
-  { id: 'QRT-05', name: 'Quick Response Team 05', area: 'Beed Bypass', status: 'available', lastUpdate: '1 min ago' },
-  { id: 'PATROL-22', name: 'Beat Patrol 22', area: 'Seven Hills', status: 'busy', lastUpdate: '15 mins ago' },
-];
 
 const STATUS_TO_DOT: Record<UnitStatus, 'available' | 'busy' | 'idle'> = {
   available: 'available',
@@ -40,13 +30,14 @@ const STATUS_TO_DOT: Record<UnitStatus, 'available' | 'busy' | 'idle'> = {
 };
 
 interface ResourcePanelProps {
+  units: PatrolUnit[];
   onUnitSelect?: (unit: PatrolUnit) => void;
 }
 
-export default function ResourcePanel({ onUnitSelect }: ResourcePanelProps) {
-  const available = MOCK_PATROL_UNITS.filter((u) => u.status === 'available').length;
-  const busy = MOCK_PATROL_UNITS.filter((u) => u.status === 'busy').length;
-  const idle = MOCK_PATROL_UNITS.filter((u) => u.status === 'idle').length;
+export default function ResourcePanel({ units, onUnitSelect }: ResourcePanelProps) {
+  const available = units.filter((u) => u.status === 'available').length;
+  const busy = units.filter((u) => u.status === 'busy').length;
+  const idle = units.filter((u) => u.status === 'idle').length;
 
   return (
     <div className="flex flex-col h-full">
@@ -68,7 +59,7 @@ export default function ResourcePanel({ onUnitSelect }: ResourcePanelProps) {
 
       {/* Unit list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {MOCK_PATROL_UNITS.map((unit) => (
+        {units.map((unit) => (
           <button
             key={unit.id}
             onClick={() => onUnitSelect?.(unit)}

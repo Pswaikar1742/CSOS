@@ -45,7 +45,7 @@ export function get_csn_landmark(lat: number, lng: number): string {
     }
   }
 
-  return nearest?.name ?? 'Kranti Chowk';
+  return nearest?.name ?? 'Unknown Area';
 }
 
 export function resolveLandmark(lat: number, lng: number, fallback?: string): string {

@@ -18,18 +18,22 @@
  * - GET /api/map-points for persisted incidents
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import TopNav from '@/components/ui/TopNav';
 import NeuralStream from '@/components/ui/NeuralStream';
 import CameraGrid from '@/components/ui/CameraGrid';
+import LiveCameraOverlay from '@/components/ui/LiveCameraOverlay';
 import IncidentQueue from '@/components/departments/police/IncidentQueue';
 import ResourcePanel from '@/components/departments/police/ResourcePanel';
+import type { PatrolUnit } from '@/components/departments/police/ResourcePanel';
 import AlertBanner, { useAlerts } from '@/components/ui/AlertBanner';
 import StatsCard from '@/components/ui/StatsCard';
 import { useCSOSSocket } from '@/lib/socket';
 import type { Incident } from '@/lib/mock-data';
 import { AlertTriangle, Shield, Radio, Siren } from 'lucide-react';
+import availableUnits from '@/lib/available_units.json';
 
 const BACKEND_HTTP_BASE = (process.env.NEXT_PUBLIC_BACKEND_HTTP_BASE || 'http://localhost:8000').replace(/\/$/, '');
 
@@ -43,15 +47,23 @@ const CityMap = dynamic(() => import('@/components/ui/CityMap'), {
 });
 
 export default function PoliceCommandCenter() {
+  const searchParams = useSearchParams();
   const { incidents, neuralLogs, connected } = useCSOSSocket('police');
   const [focusedIncident, setFocusedIncident] = useState<Incident | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'cctv'>('map');
+  const [selectedCamera, setSelectedCamera] = useState<{ cameraId: string; areaName: string } | null>(null);
+  const [units, setUnits] = useState<PatrolUnit[]>(availableUnits as PatrolUnit[]);
   const { alerts, addAlert, removeAlert } = useAlerts();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const queueRef = useRef<HTMLElement>(null);
+  const logsRef = useRef<HTMLDivElement>(null);
 
   const activeCount = incidents.filter((i) => i.status === 'AWAITING_VERIFICATION').length;
 
   const handleAssign = useCallback(async (incident: Incident) => {
     try {
+      const assignableUnit = units.find((unit) => unit.status === 'available') || units.find((unit) => unit.status === 'idle');
+
       const response = await fetch(`${BACKEND_HTTP_BASE}/api/hitl-action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,21 +73,60 @@ export default function PoliceCommandCenter() {
           officer_id: 'POLICE-OFFICER-01',
           role: 'police',
           dept: 'police',
+          assigned_unit: assignableUnit?.id,
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(String(result?.detail || 'Dispatch failed'));
 
-      const unit = String(result?.assigned_unit || 'Beat Marshal').trim();
+      const unit = String(result?.assigned_unit || assignableUnit?.id || 'Beat Marshal').trim();
+      if (assignableUnit) {
+        setUnits((prev) => prev.map((item) => (
+          item.id === assignableUnit.id
+            ? {
+              ...item,
+              status: 'busy',
+              lastUpdate: 'just now',
+            }
+            : item
+        )));
+
+        window.setTimeout(() => {
+          setUnits((prev) => prev.map((item) => (
+            item.id === assignableUnit.id
+              ? {
+                ...item,
+                status: 'available',
+                lastUpdate: '5 mins ago',
+              }
+              : item
+          )));
+        }, 5 * 60 * 1000);
+      }
+
       addAlert({ type: 'success', message: `Unit "${unit}" dispatched to ${incident.location}` });
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Dispatch failed';
       addAlert({ type: 'error', message: msg });
     }
-  }, [addAlert]);
+  }, [addAlert, units]);
+
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'map') {
+      setViewMode('map');
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (view === 'incidents') {
+      queueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (view === 'reports') {
+      logsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    } else if (view === 'dashboard') {
+      rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [searchParams]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden" ref={rootRef}>
       {/* Top Nav */}
       <TopNav role="police" alertCount={activeCount} />
 
@@ -97,7 +148,7 @@ export default function PoliceCommandCenter() {
       {/* Main 3-Column Layout */}
       <div className="flex-1 flex gap-3 p-3 overflow-hidden">
         {/* Left: Map (60%) */}
-        <section className="w-3/5 relative rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+        <section className="w-3/5 relative rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col" id="map-panel">
           {/* Map header */}
           <div className="absolute top-3 left-3 z-20 px-3 py-2 rounded-md bg-white/95 border border-slate-200 shadow-sm">
             <h2 className="text-xs font-bold tracking-wide text-[#1E3A8A]">POLICE COMMAND — Live Map</h2>
@@ -130,20 +181,32 @@ export default function PoliceCommandCenter() {
               <CityMap
                 incidents={incidents}
                 markerColor="#ef4444"
+                deptScope="police"
                 onIncidentClick={setFocusedIncident}
                 focusIncident={focusedIncident}
+                onCameraNodeClick={(cameraId, areaName) => setSelectedCamera({ cameraId, areaName })}
               />
             ) : (
-              <CameraGrid incidents={incidents} />
+              <CameraGrid incidents={incidents} onSelectCamera={(cameraId, areaName) => setSelectedCamera({ cameraId, areaName })} />
             )}
           </div>
 
           {/* Neural Stream overlay */}
-          <NeuralStream logs={neuralLogs} />
+          <div ref={logsRef} id="reports-panel">
+            <NeuralStream logs={neuralLogs} />
+          </div>
+
+          {selectedCamera && (
+            <LiveCameraOverlay
+              cameraId={selectedCamera.cameraId}
+              areaName={selectedCamera.areaName}
+              onClose={() => setSelectedCamera(null)}
+            />
+          )}
         </section>
 
         {/* Middle: Incident Queue (20%) */}
-        <section className="w-1/5 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <section className="w-1/5 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" ref={queueRef} id="incidents-panel">
           <IncidentQueue
             incidents={incidents}
             onAssign={handleAssign}
@@ -156,7 +219,7 @@ export default function PoliceCommandCenter() {
 
         {/* Right: Resource Panel (20%) */}
         <section className="w-1/5 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <ResourcePanel />
+          <ResourcePanel units={units} />
         </section>
       </div>
 
