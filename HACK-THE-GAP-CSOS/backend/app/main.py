@@ -107,3 +107,8 @@ async def ingest(payload: dict[str, Any]) -> dict[str, Any]:
         "accepted": True,
         "sieve": sieve_result,
     }
+
+
+@app.post("/threat")
+async def threat(payload: dict[str, Any]) -> dict[str, Any]:
+    return await ingest(payload)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .agents import enrich_anpr_alert, generate_dispatch_plan
+from .agents import enrich_anpr_alert, generate_dispatch_plan, load_sop_context
 from .db_connector import log_verified_threat
 
 
@@ -43,12 +43,7 @@ async def process_threat(
 
         await log_verified_threat(enriched_payload, pool=db_pool)
 
-        sop_context = str(
-            enriched_payload.get(
-                "sop_context",
-                "Apply standard CSMC incident SOP with highest priority for life safety and traffic continuity.",
-            )
-        )
+        sop_context = str(enriched_payload.get("sop_context") or load_sop_context(enriched_payload.get("class", "")))
         dispatch_plan = await generate_dispatch_plan(enriched_payload, sop_context)
 
         alert_payload = {

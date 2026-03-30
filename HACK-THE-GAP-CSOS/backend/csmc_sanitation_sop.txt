@@ -1,0 +1,37 @@
+﻿CSMC Sanitation Department Standard Operating Procedure (SOP)
+Chhatrapati Sambhajinagar Municipal Corporation
+Solid Waste Management Department
+Document Version: 1.2 | Effective Date: [Insert Current Date]
+Reference: EOI No/CSMC/SWM/2023/482 dated 04/10/2023
+Purpose: To define waste categories, enforcement mechanisms, fines, response protocols, and service level agreements for effective sanitation management across all CSMC zones.
+1. Waste Categories
+Household Waste
+Waste generated from residential premises, including kitchen waste (wet waste), recyclable dry waste (paper, plastic, glass, metal), and domestic hazardous waste (batteries, paints, insecticides). All households must segregate wet and dry waste at source as per Solid Waste Management Rules, 2016.
+Construction Debris (C&D Waste)
+Waste from construction, renovation, repair, and demolition activities, including concrete, bricks, wood, metals, tiles, and excavated soil. Must be disposed of only at designated C&D waste processing facilities and not mixed with household waste.
+Medical Waste (Biomedical Waste)
+Waste generated from hospitals, clinics, diagnostic labs, and veterinary facilities, including used syringes, needles, bandages, pathological waste, pharmaceutical waste, and sharps. Governed by Biomedical Waste Management Rules and must be handled exclusively by authorized agencies. Open dumping is strictly prohibited.
+2. Fine Structure
+* Household improper dumping / non-segregation at source: ₹500 per instance.
+* Repeated household violations (3rd offence onwards): ₹1,000 + community service.
+* Commercial / Shop / Hotel dumping: ₹5,000 per instance.
+* Construction Debris illegal dumping: ₹10,000 per truckload + cost of removal.
+* Medical / Biomedical Waste open dumping: ₹25,000 or more (as per severity) + possible license suspension.
+* Dumping in sensitive / high-visibility areas (e.g., CIDCO N-6, Nirala Bazar, near water bodies, markets): Grade A Violation – Double the base fine + immediate cleanup cost recovery.
+Fines will be issued via challan by Health Inspectors or authorized squads. Non-payment within 15 days will lead to recovery through property tax linkage or legal action.
+3. Response Protocol
+* Garbage Collection Vehicle: All primary solid waste collection vehicles are officially referred to as Ghanta Gaadi. Approximately 300 Ghanta Gaadi operate daily across the city from around 5 AM until late at night, following zone-wise schedules.
+* Zone 4 Health Inspector: [Insert Current Name & Contact – e.g., Shri. XYZ, Health Inspector, Zone 4]. Citizens may contact the 24×7 Control Room for escalation.
+* Complaint Registration & Tracking:
+   1. Report via CSMC App, website (aurangabadmahapalika.org), or 24×7 Control Room.
+   2. Citizens can use the “Know Your Vehicle” Mobile Application (developed as per EOI No/CSMC/SWM/2023/482) for real-time tracking of Ghanta Gaadi and other essential service vehicles, Estimated Time of Arrival (ETA), search for nearby vehicles, proximity notifications (within 100 meters), and on-demand booking.
+   3. On-site verification by nearest sanitation squad within SLA.
+   4. Fine issuance and cleanup initiation. Photographic evidence and geo-tagged report mandatory for all Grade A violations.
+* Special Squads: Dedicated teams for biomedical waste, construction debris, and night patrolling in high-violation zones.
+4. Service Level Agreement (SLA)
+* Routine Household Waste Collection: Daily (morning shift for wet waste, evening for dry waste).
+* Reported Illegal Dumping (Standard): Cleanup within 24 hours.
+* Grade A / High-Priority Violations (CIDCO N-6, Nirala Bazar, etc.): Immediate dispatch – cleanup within 6 hours.
+* Medical Waste Spills: Containment and removal within 4 hours + disinfection.
+* Post-Cleanup Inspection: Health Inspector to verify site within 12 hours of reported completion.
+* Vehicle Tracking SLA: Real-time location, ETA, and proximity alerts via “Know Your Vehicle” mobile app as per the 2023 EOI specifications. eq
