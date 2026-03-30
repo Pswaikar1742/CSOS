@@ -1,0 +1,42 @@
+﻿* CSOS STANDARD OPERATING PROCEDURE: RTO & TRAFFIC COMPLIANCE (ANPR-PS2)
+* Chhatrapati Sambhajinagar (CSN) - Regional Transport Office
+* Document Version: 2.0.1 | Effective Date: [Insert Current Date]
+* Reference: MoRTH National Transport Repository (NTR) Data Sharing Policy (2023) + CSMC “Know Your Vehicle” Mobile App (EOI No/CSMC/SWM/2023/482)
+Jurisdiction: Chhatrapati Sambhajinagar Municipal Corporation & Regional Transport Office
+________________
+1. OBJECTIVE
+To automate the detection, verification, and enforcement of vehicle-related violations using the CSOS ANPR Sieve (PS2).
+This SOP integrates real-time ANPR camera feeds with the National Transport Repository (NTR) via VAHAN, SARATHI, and e-Challan databases (as per MoRTH Data Sharing Policy). It aims to reduce manual roadside audits by 80%, achieve 100% identification of blacklisted or non-compliant vehicles, and enable seamless inter-agency enforcement (RTO + CSMC Sanitation + Traffic Police).
+2. DETECTION & DATA CORRELATION (THE INTER-AGENCY BRIDGE)
+When the CSOS ANPR Sieve captures a license plate, the RTO Agent (or automated pipeline) must perform a three-way real-time join using authorised NTR access (API/Portal mode as per MoRTH Policy Clause 3 & 4.3):
+* VAHAN Sync (Vehicle Registration Data Set): Verify registration number, owner name, address, chassis/engine number, vehicle class, fuel type, hypothecation, insurance, and permit details (Annexure VIII of NTR Policy).
+* Compliance Check (SARATHI + e-Challan Data Sets): Validate Fitness Certificate (FC), PUC validity, Driving Licence status, and pending e-Challans.
+* Watchlist Check: Query the SHA-256 Bloom Filter (CSOS internal) cross-referenced with NTR for “Stolen”, “Crime-Linked”, “Hit-and-Run”, or “Blacklisted” status.
+Data Access Method: RTO/CSN uses API-based sharing (preferred) or NTR Portal (secured credentials + 2FA + Aadhaar OTP) as authorised enforcement agency under MoRTH Policy Section 4.3 (complete access to all parameters including Personal Data for law enforcement).
+3. VIOLATION CLASSIFICATION & ACTION TIERS
+* Tier 1: Administrative Non-Compliance (Low Priority)
+* Triggers: Expired PUC, Insurance, or minor permit lapse (< 30 days).
+Action: Auto-generate e-Challan via SMS + “Know Your Vehicle” App push notification to registered mobile. Map blip remains Yellow. No immediate dispatch.
+* Tier 2: Safety & Fitness Violations (Medium Priority)
+* Triggers: Expired Fitness Certificate (especially commercial vehicles), over-speeding (multi-camera spatial math), or adaptive vehicle mismatch.
+Action: Issue e-Challan + “Compliance Notice” via WhatsApp/SMS. Notify nearest RTO Inspector Desk at ICCC. Map blip turns Orange. 24-hour SLA for follow-up.
+* Tier 3: Criminal & Blacklist Alerts (CRITICAL Priority)
+* Triggers: Plate match on “Stolen Vehicle”, “Hit-and-Run”, or crime-linked database (VAHAN + Police integration).
+Action: IMMEDIATE POLICE ESCALATION. Trigger Inter-Agency Bridge (Police Dispatch). Use H3 geospatial indexing to predict vehicle trajectory from next 3 nearest cameras. Map blip turns Red/Pulsing. Live handoff to PCR.
+* Tier 4: The Inter-Agency “Waste-to-Wheel” Link (Special Case)
+* Triggers: Vision Agent (PS3 – CSMC Sanitation camera) detects illegal dumping + ANPR (PS2) extracts plate.
+Action: Automatically link the Sanitation violation (CSMC SOP) to the Vehicle Owner via VAHAN data. Auto-generate “Combined Environmental & Transport Violation” notice (₹5,000+ fine + e-Challan). Dispatch joint CSMC Sanitation + RTO squad. Map blip marked Red/Environmental.
+4. DISPATCH PLAN GENERATION RULES (LLM GUIDELINES)
+When the CSOS AI generates a dispatch plan for any RTO event, it must include:
+   1. License Plate + Owner Name (PII masked on public dashboards).
+   2. Specific Violation Code (e.g., MV Act Sec 190, 192, 194, etc.).
+   3. Total Fine Amount (calculated as per current CSMC/RTO rates + NTR e-Challan data).
+   4. Response Unit & SLA: e.g., “Assign to Zone 2 RTO Inspector – 6-hour cleanup for Grade A”.
+   5. Cross-reference to “Know Your Vehicle” App for citizen ETA tracking.
+5. DATA PRIVACY & AUDIT (MoRTH NTR Policy Compliant)
+   * Vehicle owner PII must be UUID-masked on all public-facing GOD-VIEW dashboards (as per MoRTH Policy Clause 1.4 & 3.1).
+   * Full PII visible only to authenticated “Enforcer” (RTO) or “Vigilant” (Police) roles with logged access.
+   * Every issued fine generates an immutable SHA-256 hash for audit trail (stored in CSOS immutable ledger).
+   * All data access logs maintained for minimum 1 year (Annexure VI format) and available for MoRTH/NIC audit.
+   * RTO/CSN acts as Data Fiduciary under DPDP Act 2023 – liable for any breach (Chapter VIII). Annual CERT-IN empanelled security audit mandatory for renewal of NTR API/Portal access.
+   * Data stored only on India-based servers; no sub-granting of API credentials.
