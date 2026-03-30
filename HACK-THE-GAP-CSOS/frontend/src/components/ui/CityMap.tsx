@@ -4,8 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Incident } from '@/lib/mock-data';
-import { INITIAL_LAYERS, shouldAutoEnableHospitals, type MapLayer } from '@/lib/layers';
 
+// ─── CSOS v2.0 City Map Component ───
+// 3D MapLibre GL map centered on Chhatrapati Sambhajinagar
+// Pitch: 60° | Bearing: -20° | Dark style
+
+// CSN coordinates
 const CENTER: [number, number] = [75.3433, 19.8762];
 const MAP_STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://tiles.stadiamaps.com/styles/alidade_smooth.json';
 const BACKEND_HTTP_BASE = (process.env.NEXT_PUBLIC_BACKEND_HTTP_BASE || 'http://localhost:8000').replace(/\/$/, '');
@@ -27,6 +31,7 @@ type PersistedPoint = {
   timestamp?: string;
 };
 
+// Map dept to marker colors
 const DEPT_COLORS: Record<string, string> = {
   police: '#ef4444',
   rto: '#3b82f6',
@@ -35,18 +40,16 @@ const DEPT_COLORS: Record<string, string> = {
 
 export default function CityMap({ incidents, markerColor, onIncidentClick, focusIncident }: CityMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const incidentMarkersRef = useRef<maplibregl.Marker[]>([]);
-  const layerMarkersRef = useRef<maplibregl.Marker[]>([]);
-
+  const map = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [persistedIncidents, setPersistedIncidents] = useState<Incident[]>([]);
-  const [layers, setLayers] = useState<MapLayer[]>(INITIAL_LAYERS);
 
+  // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+    if (!mapContainer.current || map.current) return;
 
-    const map = new maplibregl.Map({
+    map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: MAP_STYLE_URL,
       center: CENTER,
@@ -55,23 +58,23 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
       bearing: -20,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), 'top-left');
+    map.current.addControl(new maplibregl.NavigationControl(), 'top-left');
 
-    map.on('load', () => {
+    map.current.on('load', () => {
       setMapLoaded(true);
 
-      const style = map.getStyle();
-      const layersInStyle = style?.layers;
+      // Add 3D building layer for cinematic effect
+      const style = map.current!.getStyle();
+      const layers = style?.layers;
       const hasCompositeSource = Boolean(style?.sources && 'composite' in style.sources);
-
-      if (layersInStyle && hasCompositeSource) {
-        const labelLayerId = layersInStyle.find(
+      if (layers && hasCompositeSource) {
+        const labelLayerId = layers.find(
           (layer) => layer.type === 'symbol' && layer.layout && 'text-field' in (layer.layout as Record<string, unknown>)
         )?.id;
 
         try {
-          if (!map.getLayer('3d-buildings')) {
-            map.addLayer(
+          if (!map.current!.getLayer('3d-buildings')) {
+            map.current!.addLayer(
               {
                 id: '3d-buildings',
                 source: 'composite',
@@ -90,45 +93,44 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
             );
           }
         } catch {
-          // Ignore style incompatibilities.
+          // Ignore 3D layer injection errors for non-Mapbox style sources.
         }
       }
     });
 
-    mapRef.current = map;
-
     return () => {
-      incidentMarkersRef.current.forEach((m) => m.remove());
-      layerMarkersRef.current.forEach((m) => m.remove());
-      map.remove();
-      mapRef.current = null;
+      map.current?.remove();
+      map.current = null;
+      setMapLoaded(false);
     };
   }, []);
 
+  // Update markers when incidents change
   const allIncidents = useMemo(() => {
     const merged = [...persistedIncidents, ...incidents];
     const unique = new Map<string, Incident>();
-    merged.forEach((incident) => unique.set(incident.id, incident));
+    merged.forEach((incident) => {
+      unique.set(incident.id, incident);
+    });
     return Array.from(unique.values());
   }, [incidents, persistedIncidents]);
 
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
     const loadPersistedPoints = async () => {
       try {
         const response = await fetch(`${BACKEND_HTTP_BASE}/api/map-points?limit=200`);
         if (!response.ok) return;
-
         const payload = await response.json();
-        const points: PersistedPoint[] = Array.isArray(payload?.points) ? (payload.points as PersistedPoint[]) : [];
+        const points: PersistedPoint[] = Array.isArray(payload?.points) ? payload.points as PersistedPoint[] : [];
 
         const hydrated: Incident[] = points
-          .filter((point) => typeof point.latitude === 'number' && typeof point.longitude === 'number')
+          .filter((point: PersistedPoint) => typeof point?.latitude === 'number' && typeof point?.longitude === 'number')
           .map((point) => ({
             id: String(point.incident_id || `DB-${point.camera_id || Date.now()}`),
             type: String(point.threat_type || 'INCIDENT').toUpperCase(),
-            dept: String(point.dept || 'police') as Incident['dept'],
+            dept: (String(point.dept || 'police') as Incident['dept']),
             lat: Number(point.latitude),
             lng: Number(point.longitude),
             location: String(point.camera_id || point.dept || 'DB point'),
@@ -139,38 +141,36 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
             dispatchPlan: 'Loaded from PostgreSQL/PostGIS incident registry.',
           }));
 
-        if (mounted) setPersistedIncidents(hydrated);
+        if (isMounted) {
+          setPersistedIncidents(hydrated);
+        }
       } catch {
-        // Ignore fetch failures.
+        // Ignore fetch failures and continue with realtime/mock incidents.
       }
     };
 
     void loadPersistedPoints();
-    const timer = window.setInterval(() => void loadPersistedPoints(), 10000);
+    const timer = window.setInterval(() => {
+      void loadPersistedPoints();
+    }, 10000);
 
     return () => {
-      mounted = false;
+      isMounted = false;
       window.clearInterval(timer);
     };
   }, []);
 
   useEffect(() => {
-    const hasCollision = allIncidents.some((incident) => shouldAutoEnableHospitals(incident.type));
-    if (!hasCollision) return;
+    if (!map.current || !mapLoaded) return;
 
-    setLayers((prev) => prev.map((layer) => (layer.id === 'hospitals' ? { ...layer, visible: true } : layer)));
-  }, [allIncidents]);
-
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-
-    incidentMarkersRef.current.forEach((m) => m.remove());
-    incidentMarkersRef.current = [];
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
     allIncidents.forEach((incident) => {
-      const color = DEPT_COLORS[incident.dept] || markerColor;
+      // Create custom marker element
       const el = document.createElement('div');
-
+      const color = DEPT_COLORS[incident.dept] || markerColor;
       el.innerHTML = `
         <div style="
           width: 14px;
@@ -193,9 +193,17 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
         </div>
       `;
 
-      const marker = new maplibregl.Marker({ element: el }).setLngLat([incident.lng, incident.lat]).addTo(mapRef.current!);
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([incident.lng, incident.lat])
+        .addTo(map.current!);
 
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 20 }).setHTML(`
+      // Popup on hover
+      const popup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 20,
+        className: 'csos-popup',
+      }).setHTML(`
         <div style="
           background: #ffffff;
           border: 1px solid #e2e8f0;
@@ -216,14 +224,14 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
       el.addEventListener('mouseleave', () => popup.remove());
       el.addEventListener('click', () => onIncidentClick?.(incident));
 
-      incidentMarkersRef.current.push(marker);
+      markersRef.current.push(marker);
     });
-  }, [allIncidents, mapLoaded, markerColor, onIncidentClick]);
+  }, [allIncidents, markerColor, mapLoaded, onIncidentClick]);
 
   useEffect(() => {
-    if (!mapRef.current || !mapLoaded || !focusIncident) return;
+    if (!map.current || !mapLoaded || !focusIncident) return;
 
-    mapRef.current.flyTo({
+    map.current.flyTo({
       center: [focusIncident.lng, focusIncident.lat],
       zoom: 15,
       speed: 0.9,
@@ -232,82 +240,21 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
     });
   }, [focusIncident, mapLoaded]);
 
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-
-    layerMarkersRef.current.forEach((m) => m.remove());
-    layerMarkersRef.current = [];
-
-    layers.forEach((layer) => {
-      if (!layer.visible) return;
-
-      layer.geojson.features.forEach((feature) => {
-        if (feature.geometry.type !== 'Point') return;
-
-        const [lng, lat] = feature.geometry.coordinates;
-        const props = feature.properties as Record<string, unknown>;
-
-        const el = document.createElement('div');
-        el.innerHTML = `<div style="font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3));cursor:pointer;">${layer.icon}</div>`;
-
-        const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 20 }).setHTML(`
-          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;color:#0f172a;font-size:12px;max-width:220px;">
-            <div style="font-weight:700;color:${layer.color};">${String(props.name || 'Location')}</div>
-            <div style="margin-top:4px;color:#475569;font-size:11px;line-height:1.4;">
-              ${props.ward ? `Ward: ${String(props.ward)}<br/>` : ''}
-              ${props.beds ? `Beds: ${String(props.beds)}<br/>` : ''}
-              ${props.personnel ? `Personnel: ${String(props.personnel)}<br/>` : ''}
-              ${props.emergency ? `Emergency: ${String(props.emergency)}` : ''}
-            </div>
-          </div>
-        `);
-
-        const marker = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapRef.current!);
-        el.addEventListener('mouseenter', () => marker.setPopup(popup).togglePopup());
-        el.addEventListener('mouseleave', () => popup.remove());
-
-        layerMarkersRef.current.push(marker);
-      });
-    });
-  }, [layers, mapLoaded]);
-
-  const toggleLayer = (layerId: string) => {
-    setLayers((prev) => prev.map((layer) => (layer.id === layerId ? { ...layer, visible: !layer.visible } : layer)));
-  };
-
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="w-full h-full rounded-lg overflow-hidden" />
 
-      <div className="absolute top-3 right-3 z-10 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-md">
-        <div className="mb-2 text-xs font-semibold tracking-wide text-slate-700">LAYERS</div>
-        <div className="space-y-2">
-          {layers.map((layer) => (
-            <label key={layer.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-slate-50">
-              <input
-                type="checkbox"
-                checked={layer.visible}
-                onChange={() => toggleLayer(layer.id)}
-                className="h-4 w-4 accent-slate-700"
-              />
-              <span className="text-[11px] text-slate-700">
-                {layer.icon} {layer.name}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="absolute bottom-20 left-3 rounded border border-slate-200 bg-white/95 px-3 py-1.5 shadow-sm md:bottom-3">
+      {/* Map overlay — coordinates display */}
+      <div className="absolute bottom-20 md:bottom-3 left-3 bg-white/95 border border-slate-200 rounded px-3 py-1.5 shadow-sm">
         <span className="text-[10px] font-mono text-slate-600">
           CSN [{CENTER[1].toFixed(4)}, {CENTER[0].toFixed(4)}] | PITCH: 60° | ALT: 3D
         </span>
       </div>
 
+      {/* Marker ping animation */}
       <style jsx global>{`
         @keyframes ping {
-          75%,
-          100% {
+          75%, 100% {
             transform: scale(2);
             opacity: 0;
           }

@@ -1,8 +1,42 @@
 @import "tailwindcss";
 
+/* ─── CSOS v2.0 Design System ─── */
+
 :root {
   --background: #F9FAFB;
   --foreground: #0f172a;
+
+  /* ── Police Department Tokens (Red / Dark) ── */
+  --police-primary: #DC2626;
+  --police-secondary: #991B1B;
+  --police-bg: #1A1A1A;
+  --police-surface: #262626;
+  --police-text: #FFFFFF;
+  --police-muted: #a3a3a3;
+
+  /* ── RTO Department Tokens (Blue / Light) ── */
+  --rto-primary: #1E40AF;
+  --rto-secondary: #1E3A8A;
+  --rto-bg: #F5F5F5;
+  --rto-surface: #FFFFFF;
+  --rto-text: #1F2937;
+  --rto-muted: #6B7280;
+
+  /* ── Sanitation Department Tokens (Green / Light) ── */
+  --sanitation-primary: #059669;
+  --sanitation-secondary: #047857;
+  --sanitation-bg: #FAFAFA;
+  --sanitation-surface: #FFFFFF;
+  --sanitation-text: #1F2937;
+  --sanitation-muted: #6B7280;
+
+  /* ── City Command Tokens (Amber / Dark) ── */
+  --city-primary: #F59E0B;
+  --city-secondary: #D97706;
+  --city-bg: #1E293B;
+  --city-surface: #334155;
+  --city-text: #FFFFFF;
+  --city-muted: #94A3B8;
 }
 
 @theme inline {
@@ -16,4 +50,100 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), Inter, Roboto, Arial, Helvetica, sans-serif;
+}
+
+/* ─── Utility Animations ─── */
+
+@keyframes pulse-alert {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-pulse-alert { animation: pulse-alert 1.5s ease-in-out infinite; }
+.animate-slide-in-right { animation: slide-in-right 0.3s ease-out forwards; }
+.animate-ticker { animation: ticker-scroll 30s linear infinite; }
+.animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
+
+/* ─── CSOS v2.0 Landing Page Styles ─── */
+
+:root {
+  /* Landing Dark Theme Elements */
+  --landing-bg-primary: #000000;
+  --landing-primary-blue: #0066ff;
+  --landing-cyan-accent: #00d9ff;
+  --landing-neon-green: #00ff88;
+  
+  --landing-text-primary: #ffffff;
+  --landing-text-secondary: rgba(255, 255, 255, 0.7);
+  --landing-text-muted: rgba(255, 255, 255, 0.4);
+  
+  --landing-glass-bg: rgba(15, 30, 60, 0.3);
+  --landing-glass-border: rgba(0, 217, 255, 0.3);
+  --landing-glass-shadow: rgba(0, 100, 255, 0.2);
+}
+
+@theme inline {
+  --color-landing-bg: var(--landing-bg-primary);
+  --color-landing-blue: var(--landing-primary-blue);
+  --color-landing-cyan: var(--landing-cyan-accent);
+  --color-landing-neon: var(--landing-neon-green);
+}
+
+/* Landing Utilities */
+.landing-text-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, #00d9ff 50%, #0066ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.landing-title-shadow {
+  text-shadow: 0 0 40px rgba(0, 217, 255, 0.5);
+}
+
+@keyframes map-pulse {
+  0%, 100% { opacity: 0.4; r: 4; }
+  50% { opacity: 1; r: 6; }
+}
+
+@keyframes fade-out-trail {
+  from { opacity: 0.8; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.2); }
+}
+
+.cursor-trail {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #00d9ff, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: fade-out-trail 0.5s ease-out forwards;
+  z-index: 9999;
+  transform: translate(-50%, -50%); /* center on mouse */
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * { 
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import CommandCenter from '@/components/ui/CommandCenter';
+import CityCommandCenter from '@/components/departments/CityCommandCenter';
 
 export default function GodViewPage() {
-  return <CommandCenter role="god-view" />;
+  return <CityCommandCenter />;
 }

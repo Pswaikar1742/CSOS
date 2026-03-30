@@ -21,11 +21,7 @@ type IncidentContextValue = {
 const IncidentContext = createContext<IncidentContextValue | undefined>(undefined);
 
 export function IncidentProvider({ children }: { children: ReactNode }) {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-
-  useEffect(() => {
-    setIncidents(MOCK_INCIDENTS);
-  }, []);
+  const [incidents, setIncidents] = useState<Incident[]>(MOCK_INCIDENTS);
 
   const resetToMockData = useCallback(() => {
     setIncidents(MOCK_INCIDENTS);

@@ -1,7 +1,7 @@
 'use client';
 
-import CommandCenter from '@/components/ui/CommandCenter';
+import RTOCommandCenter from '@/components/departments/RTOCommandCenter';
 
 export default function RTOPage() {
-  return <CommandCenter role="rto" dept="rto" />;
+  return <RTOCommandCenter />;
 }
