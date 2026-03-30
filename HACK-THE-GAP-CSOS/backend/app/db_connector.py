@@ -209,9 +209,10 @@ async def get_recent_incident_map_points(
             status,
             timestamp,
             CASE
-                WHEN LOWER(threat_type) IN ('weapon', 'hazard') THEN 'police'
+                WHEN LOWER(threat_type) IN ('weapon', 'accident', 'hazard') THEN 'police'
                 WHEN LOWER(threat_type) IN ('garbage') THEN 'sanitation'
-                WHEN LOWER(threat_type) IN ('anpr', 'pothole') THEN 'rto'
+                WHEN LOWER(threat_type) IN ('pothole') THEN 'sanitation'
+                WHEN LOWER(threat_type) IN ('anpr', 'anpr_detection') THEN 'rto'
                 ELSE 'god-view'
             END AS dept,
             ST_AsGeoJSON(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)) AS geom_geojson
@@ -249,8 +250,10 @@ async def get_recent_incident_points(
             timestamp,
             status,
             CASE
+                WHEN lower(threat_type) IN ('weapon', 'accident', 'hazard') THEN 'police'
                 WHEN lower(threat_type) IN ('garbage') THEN 'sanitation'
-                WHEN lower(threat_type) IN ('anpr', 'pothole') THEN 'rto'
+                WHEN lower(threat_type) IN ('pothole') THEN 'sanitation'
+                WHEN lower(threat_type) IN ('anpr', 'anpr_detection') THEN 'rto'
                 ELSE 'police'
             END AS dept,
             ST_AsGeoJSON(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)) AS geom

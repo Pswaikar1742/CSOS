@@ -161,11 +161,11 @@ async def wa_webhook(payload: dict[str, Any]) -> dict[str, Any]:
         dept = "sanitation"
     elif any(token in normalized_text for token in ("pothole", "road damage", "road crack", "road hole")):
         threat_class = "pothole"
-        dept = "rto"
+        dept = "sanitation"
     elif any(token in normalized_text for token in ("plate", "vehicle", "challan", "rto", "number")):
-        threat_class = "anpr"
+        threat_class = "anpr_detection"
         dept = "rto"
-    elif any(token in normalized_text for token in ("weapon", "fight", "kidnap", "gun", "knife")):
+    elif any(token in normalized_text for token in ("weapon", "fight", "kidnap", "gun", "knife", "accident", "crash", "collision")):
         threat_class = "weapon"
         dept = "police"
     else:
