@@ -59,7 +59,19 @@ async def process_threat(
             "garbage": "sanitation",
             "anpr": "rto",
         }
-        target_dept = dept_map.get(str(enriched_payload.get("class", "")).lower(), "god-view")
+
+        event_class = str(enriched_payload.get("class", "")).lower()
+        target_dept = dept_map.get(event_class, "god-view")
+
+        if event_class == "anpr" and bool(enriched_payload.get("anpr_blacklisted", False)):
+            jurisdiction = str(enriched_payload.get("blacklist_jurisdiction", "")).lower()
+            if "sanitation" in jurisdiction or "csmc" in jurisdiction:
+                target_dept = "sanitation"
+            elif "rto" in jurisdiction:
+                target_dept = "rto"
+            else:
+                target_dept = "police"
+
         await websocket_manager.broadcast_to_dept(json.dumps(alert_payload), target_dept)
 
     return result

@@ -82,12 +82,17 @@ def load_rto_db() -> pd.DataFrame:
     project_root = Path(__file__).resolve().parents[2]
     preferred_path = project_root / "data" / "anpr_rto_db.csv"
     fallback_path = project_root / "data" / "anpr_db.csv"
+    blacklist_paths = [
+        project_root / "backend" / "anpr_blacklist.csv",
+        project_root / "data" / "anpr_blacklist.csv",
+    ]
 
     source_path = preferred_path if preferred_path.exists() else fallback_path
-    if not source_path.exists() or source_path.stat().st_size == 0:
-        return pd.DataFrame(columns=["license_plate", "owner_name", "owner_address"])
+    if source_path.exists() and source_path.stat().st_size > 0:
+        dataframe = pd.read_csv(source_path)
+    else:
+        dataframe = pd.DataFrame(columns=["license_plate", "owner_name", "owner_address"])
 
-    dataframe = pd.read_csv(source_path)
     rename_map = {
         "plate": "license_plate",
         "vehicle_number": "license_plate",
@@ -101,7 +106,61 @@ def load_rto_db() -> pd.DataFrame:
             dataframe[column] = None
 
     dataframe["license_plate"] = dataframe["license_plate"].astype(str).str.strip().str.upper()
-    return dataframe[["license_plate", "owner_name", "owner_address"]]
+    dataframe = dataframe[["license_plate", "owner_name", "owner_address"]]
+
+    blacklist_df = pd.DataFrame(
+        columns=[
+            "license_plate",
+            "blacklist_reason",
+            "blacklist_priority",
+            "blacklist_jurisdiction",
+            "is_blacklisted",
+        ]
+    )
+
+    for blacklist_path in blacklist_paths:
+        if not blacklist_path.exists() or blacklist_path.stat().st_size == 0:
+            continue
+
+        loaded = pd.read_csv(blacklist_path)
+        loaded = loaded.rename(
+            columns={
+                "LicensePlate": "license_plate",
+                "ReasonCategory": "blacklist_reason",
+                "Priority": "blacklist_priority",
+                "Jurisdiction": "blacklist_jurisdiction",
+            }
+        )
+
+        for column in ("license_plate", "blacklist_reason", "blacklist_priority", "blacklist_jurisdiction"):
+            if column not in loaded.columns:
+                loaded[column] = None
+
+        loaded = loaded[["license_plate", "blacklist_reason", "blacklist_priority", "blacklist_jurisdiction"]]
+        loaded["license_plate"] = loaded["license_plate"].astype(str).str.strip().str.upper()
+        loaded["is_blacklisted"] = True
+        blacklist_df = pd.concat([blacklist_df, loaded], ignore_index=True)
+
+    blacklist_df = blacklist_df.drop_duplicates(subset=["license_plate"], keep="first")
+
+    merged = dataframe.merge(
+        blacklist_df,
+        on="license_plate",
+        how="outer",
+    )
+    merged["is_blacklisted"] = merged["is_blacklisted"].fillna(False).astype(bool)
+
+    return merged[
+        [
+            "license_plate",
+            "owner_name",
+            "owner_address",
+            "is_blacklisted",
+            "blacklist_reason",
+            "blacklist_priority",
+            "blacklist_jurisdiction",
+        ]
+    ]
 
 
 async def enrich_anpr_alert(payload: dict[str, Any], rto_db: pd.DataFrame) -> dict[str, Any]:
@@ -119,8 +178,20 @@ async def enrich_anpr_alert(payload: dict[str, Any], rto_db: pd.DataFrame) -> di
         return enriched_payload
 
     record = matches.iloc[0]
-    enriched_payload["owner_name"] = None if pd.isna(record["owner_name"]) else str(record["owner_name"])
-    enriched_payload["owner_address"] = None if pd.isna(record["owner_address"]) else str(record["owner_address"])
+    enriched_payload["owner_name"] = None if pd.isna(record.get("owner_name")) else str(record.get("owner_name"))
+    enriched_payload["owner_address"] = None if pd.isna(record.get("owner_address")) else str(record.get("owner_address"))
+
+    is_blacklisted = bool(record.get("is_blacklisted", False))
+    enriched_payload["anpr_blacklisted"] = is_blacklisted
+    if is_blacklisted:
+        enriched_payload["blacklist_reason"] = None if pd.isna(record.get("blacklist_reason")) else str(record.get("blacklist_reason"))
+        enriched_payload["blacklist_priority"] = None if pd.isna(record.get("blacklist_priority")) else str(record.get("blacklist_priority"))
+        enriched_payload["blacklist_jurisdiction"] = None if pd.isna(record.get("blacklist_jurisdiction")) else str(record.get("blacklist_jurisdiction"))
+
+        priority = str(enriched_payload.get("blacklist_priority", "")).upper()
+        priority_to_level = {"LOW": 1, "MEDIUM": 2, "HIGH": 2, "CRITICAL": 3}
+        enriched_payload["threat_level"] = priority_to_level.get(priority, 2)
+
     return enriched_payload
 
 
