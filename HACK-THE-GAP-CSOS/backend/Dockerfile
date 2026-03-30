@@ -9,14 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+COPY requirements.docker.txt .
+RUN pip install --user --no-cache-dir -r requirements.docker.txt
 
 # STAGE 2: Runtime
 FROM python:3.11-slim as runtime
 WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Install only the runtime library for Postgres
 RUN apt-get update && apt-get install -y --no-install-recommends \
