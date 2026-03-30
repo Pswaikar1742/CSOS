@@ -101,6 +101,7 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
     return () => {
       map.current?.remove();
       map.current = null;
+      setMapLoaded(false);
     };
   }, []);
 

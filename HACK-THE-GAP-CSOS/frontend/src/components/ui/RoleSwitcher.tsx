@@ -15,7 +15,9 @@ export default function RoleSwitcher({ currentRole }: { currentRole: CSOSRole })
   const [open, setOpen] = useState(false);
 
   const switchRole = (role: CSOSRole) => {
+    // eslint-disable-next-line react-hooks/immutability
     document.cookie = `csos_role=${role}; path=/; max-age=86400`;
+    // eslint-disable-next-line react-hooks/immutability
     window.location.href = ROLE_HOME[role];
   };
 

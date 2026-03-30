@@ -64,6 +64,7 @@ export function useCSOSSocket(dept?: string): SocketState {
     const filtered = dept && dept !== 'god-view'
       ? MOCK_INCIDENTS.filter((inc) => inc.dept === dept)
       : MOCK_INCIDENTS;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIncidents(filtered);
 
     // Try WebSocket connection
