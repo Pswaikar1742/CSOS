@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .agents import enrich_anpr_alert
 from .db_connector import log_verified_threat
 
 
@@ -15,6 +16,7 @@ async def process_threat(
 	redis_client: Any,
 	websocket_manager: Any,
 	db_pool: Any,
+	rto_db: Any = None,
 ) -> dict[str, Any]:
 	threat_key = (
 		f"threat:{payload['camera_id']}:{payload['class']}:{payload['bbox'][0]}:{payload['bbox'][1]}"
@@ -34,13 +36,18 @@ async def process_threat(
 	}
 
 	if verified:
-		await log_verified_threat(payload, pool=db_pool)
+		if payload.get("class") == "anpr" and rto_db is not None:
+			enriched_payload = await enrich_anpr_alert(payload, rto_db)
+		else:
+			enriched_payload = payload
+
+		await log_verified_threat(enriched_payload, pool=db_pool)
 
 		alert_payload = {
 			"type": "verified_threat",
 			"threat_key": threat_key,
 			"counter": counter,
-			"payload": payload,
+			"payload": enriched_payload,
 		}
 		await websocket_manager.broadcast(json.dumps(alert_payload))
 

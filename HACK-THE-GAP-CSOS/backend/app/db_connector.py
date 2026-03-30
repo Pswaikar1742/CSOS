@@ -13,6 +13,19 @@ from redis.asyncio import Redis
 
 _db_pool: Pool | None = None
 
+CREATE_VERIFIED_INCIDENTS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS verified_incidents (
+    id SERIAL PRIMARY KEY,
+    incident_id UUID NOT NULL,
+    camera_id VARCHAR(255) NOT NULL,
+    threat_type VARCHAR(100) NOT NULL,
+    timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    status VARCHAR(50) DEFAULT 'AWAITING_VERIFICATION'
+);
+"""
+
 
 def get_redis_connection() -> Redis:
     return Redis(host="localhost", port=6379, decode_responses=True)
@@ -47,6 +60,15 @@ async def disconnect_from_db(pool: Pool | None = None) -> None:
     if target_pool is not None:
         await target_pool.close()
     _db_pool = None
+
+
+async def ensure_verified_incidents_table(pool: Pool | None = None) -> None:
+    target_pool = pool or _db_pool
+    if target_pool is None:
+        raise RuntimeError("PostgreSQL pool is not initialized. Call connect_to_db() first.")
+
+    async with target_pool.acquire() as connection:
+        await connection.execute(CREATE_VERIFIED_INCIDENTS_TABLE_SQL)
 
 
 async def log_verified_threat(payload: dict[str, Any], pool: Pool | None = None) -> None:

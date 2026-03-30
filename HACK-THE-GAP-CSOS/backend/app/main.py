@@ -5,7 +5,13 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from .db_connector import connect_to_db, disconnect_from_db, get_redis_connection
+from .agents import load_rto_db
+from .db_connector import (
+    connect_to_db,
+    disconnect_from_db,
+    ensure_verified_incidents_table,
+    get_redis_connection,
+)
 from .sieve import process_threat
 from .websocket_manager import ConnectionManager
 
@@ -26,6 +32,8 @@ app.add_middleware(
 async def on_startup() -> None:
     app.state.redis = get_redis_connection()
     app.state.db_pool = await connect_to_db()
+    await ensure_verified_incidents_table(app.state.db_pool)
+    app.state.rto_db = load_rto_db()
 
 
 @app.on_event("shutdown")
@@ -70,6 +78,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
 async def ingest(payload: dict[str, Any]) -> dict[str, Any]:
     redis_client = app.state.redis
     db_pool = app.state.db_pool
+    rto_db = getattr(app.state, "rto_db", None)
 
     required_fields = {"camera_id", "class", "bbox"}
     missing = required_fields - payload.keys()
@@ -91,6 +100,7 @@ async def ingest(payload: dict[str, Any]) -> dict[str, Any]:
         redis_client=redis_client,
         websocket_manager=manager,
         db_pool=db_pool,
+        rto_db=rto_db,
     )
 
     return {
