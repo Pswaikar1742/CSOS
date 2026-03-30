@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Incident } from '@/lib/mock-data';
+import { INITIAL_LAYERS, shouldAutoEnableHospitals, type MapLayer } from '@/lib/layers';
 
 // ─── CSOS v2.0 City Map Component ───
 // 3D MapLibre GL map centered on Chhatrapati Sambhajinagar
@@ -42,8 +43,10 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const layerMarkersRef = useRef<maplibregl.Marker[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [persistedIncidents, setPersistedIncidents] = useState<Incident[]>([]);
+  const [layers, setLayers] = useState<MapLayer[]>(INITIAL_LAYERS);
 
   // Initialize map
   useEffect(() => {
@@ -236,6 +239,106 @@ export default function CityMap({ incidents, markerColor, onIncidentClick, focus
       speed: 0.9,
       curve: 1.2,
       essential: true,
+
+  // Auto-enable hospitals layer on vehicle collision incidents
+  useEffect(() => {
+    const hasCollision = allIncidents.some((inc) => shouldAutoEnableHospitals(inc.type));
+    if (hasCollision) {
+      setLayers((prev) =>
+        prev.map((layer) => (layer.id === 'hospitals' ? { ...layer, visible: true } : layer))
+      );Layer Toggle UI */}
+      <div className="absolute top-3 right-3 bg-white/95 border border-slate-200 rounded-lg shadow-md p-3 z-10">
+        <div className="text-xs font-semibold text-slate-700 mb-2 tracking-wide">LAYERS</div>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {layers.map((layer) => (
+            <label key={layer.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 px-1 py-1 rounded">
+              <input
+                type="checkbox"
+                checked={layer.visible}
+                onChange={() => toggleLayer(layer.id)}
+                className="w-4 h-4 accent-slate-700"
+              />
+              <span className="text-11px text-slate-600">
+                {layer.icon} {layer.name}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* 
+    }
+  }, [allIncidents]);
+
+  // Render layer markers on map
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    // Clear existing layer markers
+    layerMarkersRef.current.forEach((m) => m.remove());
+    layerMarkersRef.current = [];
+
+    // Add layer-specific markers
+    layers.forEach((layer) => {
+      if (!layer.visible) return;
+
+      layer.geojson.features.forEach((feature) => {
+        if (feature.geometry.type !== 'Point') return;
+        const [lng, lat] = feature.geometry.coordinates;
+        const props = feature.properties as Record<string, unknown>;
+
+        const el = document.createElement('div');
+        el.innerHTML = `
+          <div style="
+            font-size: 20px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            cursor: pointer;
+          ">
+            ${layer.icon}
+          </div>
+        `;
+
+        const popup = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 20,
+        }).setHTML(`
+          <div style="
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: #0f172a;
+            font-family: system-ui;
+            font-size: 12px;
+            max-width: 200px;
+          ">
+            <div style="font-weight: bold; color: ${layer.color};">${props.name || 'Location'}</div>
+            <div style="margin-top: 4px; color: #475569; font-size: 11px;">
+              ${props.ward ? `Ward: ${props.ward}<br/>` : ''}
+              ${props.beds ? `Beds: ${props.beds}<br/>` : ''}
+              ${props.personnel ? `Personnel: ${props.personnel}<br/>` : ''}
+              ${props.emergency ? `Emergency: ${props.emergency}` : ''}
+            </div>
+          </div>
+        `);
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map.current!);
+
+        el.addEventListener('mouseenter', () => marker.togglePopup());
+        el.addEventListener('mouseleave', () => popup.remove());
+
+        layerMarkersRef.current.push(marker);
+      });
+    });
+  }, [layers, mapLoaded]);
+
+  const toggleLayer = (layerId: string) => {
+    setLayers((prev) => prev.map((layer) => (layer.id === layerId ? { ...layer, visible: !layer.visible } : layer)));
+  };
     });
   }, [focusIncident, mapLoaded]);
 

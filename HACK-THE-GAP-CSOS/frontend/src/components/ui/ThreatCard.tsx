@@ -10,7 +10,7 @@ interface ThreatCardProps {
   dispatchPlan: string;
   dispatchLabel: string;
   status?: string;
-  onDispatch?: () => Promise<string | void>;
+  onDispatch?: () => Promise<{ auditHash?: string; assignedUnit?: string }>;
   disabled?: boolean;
 }
 
@@ -28,19 +28,19 @@ export default function ThreatCard({
   const isInterAgency = type.toUpperCase().includes('INTER-AGENCY ALERT');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDispatched, setIsDispatched] = useState(status === 'DISPATCHED' || status === 'RESOLVED');
+  const [assignedUnit, setAssignedUnit] = useState<string | null>(null);
 
   const handleDispatch = async () => {
     if (!onDispatch || disabled || isSubmitting || isDispatched) return;
 
     setIsSubmitting(true);
     try {
-      const auditHash = await onDispatch();
+      const result = await onDispatch();
       setIsDispatched(true);
-      const normalizedHash = String(auditHash || '').trim();
-      if (normalizedHash) {
-        window.alert(`Dispatch Logged. Audit Hash: ${normalizedHash}`);
-      } else {
-        window.alert('Dispatch Logged. Audit Hash generated.');
+      const unit = result?.assignedUnit || '';
+      setAssignedUnit(unit);
+      if (unit) {
+        window.alert(`✓ Dispatch Confirmed\n\nUnit: ${unit}\nIncident: ${incidentId}\n\nETA: 4 minutes`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Dispatch failed';
@@ -75,6 +75,14 @@ export default function ThreatCard({
         </span>
         <p className="text-xs font-medium text-slate-600">Location: {location}</p>
         <p className="text-sm text-slate-700 leading-relaxed">{dispatchPlan}</p>
+        {isDispatched && assignedUnit && (
+          <div className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+            <p className="text-xs font-semibold text-emerald-700">
+              ✓ Unit Assigned: <span className="font-mono">{assignedUnit}</span>
+            </p>
+            <p className="text-xs text-emerald-600 mt-1">Estimated arrival: 4 minutes</p>
+          </div>
+        )}
       </div>
 
       {status && (

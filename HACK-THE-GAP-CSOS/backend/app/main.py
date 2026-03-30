@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agents import load_rto_db
@@ -295,3 +296,113 @@ async def hitl_action(payload: dict[str, Any]) -> dict[str, Any]:
         raise
     except Exception as error:
         raise HTTPException(status_code=500, detail=f"HITL dispatch pipeline failed: {error}") from error
+
+@app.get("/api/video_feed/{camera_id}")
+async def video_feed(camera_id: str) -> Any:
+    """
+    MJPEG video streaming endpoint.
+    Streams 30fps mock frames for demo purposes.
+    Format: multipart/x-mixed-replace with JPEG boundaries.
+    
+    In production, this would connect to the vision detector's frame buffer
+    or a Redis-backed frame queue from the multi_stream_detector.py process.
+    """
+    import io
+    
+    try:
+        import cv2
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="OpenCV not available for frame generation"
+        )
+    
+    async def frame_generator() -> Any:
+        """Generate MJPEG frames at ~15fps."""
+        try:
+            frame_count = 0
+            frame_width, frame_height = 640, 480
+            
+            # Camera metadata for overlay text
+            camera_labels = {
+                "CAM_CIDCO_N6": "CIDCO N-6 Residential",
+                "CAM_KRANTI_CHOWK": "Kranti Chowk Junction",
+                "CAM_AURANGPURA": "Aurangpura Market",
+                "CAM_BEED_BYPASS": "Beed Bypass Highway",
+                "CAM_RAILWAY_STATION_ROAD": "Railway Station Road",
+            }
+            camera_label = camera_labels.get(camera_id, camera_id)
+            
+            while True:
+                # Create a mock frame (gradient + timestamp + camera label)
+                frame = cv2.Mat(frame_height, frame_width, cv2.CV_8UC3)
+                
+                # Fill with gradient background
+                for y in range(frame_height):
+                    color_val = int(20 + (y / frame_height) * 100)
+                    frame[y, :] = [color_val, color_val + 20, color_val + 40]
+                
+                # Add timestamp
+                timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                cv2.putText(
+                    frame,
+                    timestamp,
+                    (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (100, 255, 100),
+                    2
+                )
+                
+                # Add camera label
+                cv2.putText(
+                    frame,
+                    f"[LIVE] {camera_label}",
+                    (10, 70),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (50, 200, 255),
+                    2
+                )
+                
+                # Add mock threat indicator
+                threat_types = ["NO THREAT", "WEAPON DETECTED", "COLLISION DETECTED", "POTHOLE DETECTED"]
+                threat_idx = frame_count % 4
+                threat_color = (0, 255, 0) if threat_idx == 0 else (0, 0, 255)
+                cv2.putText(
+                    frame,
+                    f"Status: {threat_types[threat_idx]}",
+                    (10, frame_height - 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    threat_color,
+                    2
+                )
+                
+                # Encode frame as JPEG
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                frame_bytes = buffer.tobytes()
+                
+                # Yield MJPEG boundary and frame
+                yield (
+                    b'--frameboundary\r\n'
+                    b'Content-Type: image/jpeg\r\n'
+                    b'Content-Length: ' + str(len(frame_bytes)).encode() + b'\r\n\r\n'
+                    + frame_bytes + b'\r\n'
+                )
+                
+                frame_count += 1
+                await asyncio.sleep(0.067)  # ~15fps
+                
+        except Exception as error:
+            print(f"[ERROR] Frame generation failed for {camera_id}: {error}")
+            raise
+    
+    return StreamingResponse(
+        frame_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frameboundary",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Connection": "keep-alive",
+        }
+    )

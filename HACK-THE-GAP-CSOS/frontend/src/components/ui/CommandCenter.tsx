@@ -83,9 +83,12 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
 
       const dispatchMessage = String(result?.assigned_unit || result?.dispatch_message || '').trim();
       const auditHash = String(result?.audit_hash || '').trim();
-      setToastMessage(dispatchMessage ? `Unit Assigned: ${dispatchMessage}` : 'Dispatch completed successfully');
-      window.setTimeout(() => setToastMessage(null), 2500);
-      return auditHash;
+      setToastMessage(dispatchMessage ? `✓ DISPATCHED: ${dispatchMessage}` : 'Dispatch completed successfully');
+      window.setTimeout(() => setToastMessage(null), 4000);
+      return {
+        auditHash,
+        assignedUnit: dispatchMessage,
+      };
     },
     [backendHttpUrl, dept, role]
   );
