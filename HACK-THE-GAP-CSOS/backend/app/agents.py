@@ -11,6 +11,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
+from .core.anpr_engine import enrich_payload_from_anpr_index, load_anpr_index
+
 
 class DispatchPlan(BaseModel):
     target_dept: str = Field(..., description='Target department, e.g. "police", "sanitation", "rto".')
@@ -80,119 +82,11 @@ def load_sop_context(threat_class: str) -> str:
 
 def load_rto_db() -> pd.DataFrame:
     project_root = Path(__file__).resolve().parents[2]
-    preferred_path = project_root / "data" / "anpr_rto_db.csv"
-    fallback_path = project_root / "data" / "anpr_db.csv"
-    blacklist_paths = [
-        project_root / "backend" / "anpr_blacklist.csv",
-        project_root / "data" / "anpr_blacklist.csv",
-    ]
-
-    source_path = preferred_path if preferred_path.exists() else fallback_path
-    if source_path.exists() and source_path.stat().st_size > 0:
-        dataframe = pd.read_csv(source_path)
-    else:
-        dataframe = pd.DataFrame(columns=["license_plate", "owner_name", "owner_address"])
-
-    rename_map = {
-        "plate": "license_plate",
-        "vehicle_number": "license_plate",
-        "owner": "owner_name",
-        "address": "owner_address",
-    }
-    dataframe = dataframe.rename(columns=rename_map)
-
-    for column in ("license_plate", "owner_name", "owner_address"):
-        if column not in dataframe.columns:
-            dataframe[column] = None
-
-    dataframe["license_plate"] = dataframe["license_plate"].astype(str).str.strip().str.upper()
-    dataframe = dataframe[["license_plate", "owner_name", "owner_address"]]
-
-    blacklist_df = pd.DataFrame(
-        columns=[
-            "license_plate",
-            "blacklist_reason",
-            "blacklist_priority",
-            "blacklist_jurisdiction",
-            "is_blacklisted",
-        ]
-    )
-
-    for blacklist_path in blacklist_paths:
-        if not blacklist_path.exists() or blacklist_path.stat().st_size == 0:
-            continue
-
-        loaded = pd.read_csv(blacklist_path)
-        loaded = loaded.rename(
-            columns={
-                "LicensePlate": "license_plate",
-                "ReasonCategory": "blacklist_reason",
-                "Priority": "blacklist_priority",
-                "Jurisdiction": "blacklist_jurisdiction",
-            }
-        )
-
-        for column in ("license_plate", "blacklist_reason", "blacklist_priority", "blacklist_jurisdiction"):
-            if column not in loaded.columns:
-                loaded[column] = None
-
-        loaded = loaded[["license_plate", "blacklist_reason", "blacklist_priority", "blacklist_jurisdiction"]]
-        loaded["license_plate"] = loaded["license_plate"].astype(str).str.strip().str.upper()
-        loaded["is_blacklisted"] = True
-        blacklist_df = pd.concat([blacklist_df, loaded], ignore_index=True)
-
-    blacklist_df = blacklist_df.drop_duplicates(subset=["license_plate"], keep="first")
-
-    merged = dataframe.merge(
-        blacklist_df,
-        on="license_plate",
-        how="outer",
-    )
-    merged["is_blacklisted"] = merged["is_blacklisted"].fillna(False).astype(bool)
-
-    return merged[
-        [
-            "license_plate",
-            "owner_name",
-            "owner_address",
-            "is_blacklisted",
-            "blacklist_reason",
-            "blacklist_priority",
-            "blacklist_jurisdiction",
-        ]
-    ]
+    return load_anpr_index(project_root)
 
 
 async def enrich_anpr_alert(payload: dict[str, Any], rto_db: pd.DataFrame) -> dict[str, Any]:
-    enriched_payload = dict(payload)
-    license_plate_raw = payload.get("license_plate")
-    if not isinstance(license_plate_raw, str) or not license_plate_raw.strip():
-        return enriched_payload
-
-    license_plate = license_plate_raw.strip().upper()
-    if rto_db.empty:
-        return enriched_payload
-
-    matches = rto_db[rto_db["license_plate"] == license_plate]
-    if matches.empty:
-        return enriched_payload
-
-    record = matches.iloc[0]
-    enriched_payload["owner_name"] = None if pd.isna(record.get("owner_name")) else str(record.get("owner_name"))
-    enriched_payload["owner_address"] = None if pd.isna(record.get("owner_address")) else str(record.get("owner_address"))
-
-    is_blacklisted = bool(record.get("is_blacklisted", False))
-    enriched_payload["anpr_blacklisted"] = is_blacklisted
-    if is_blacklisted:
-        enriched_payload["blacklist_reason"] = None if pd.isna(record.get("blacklist_reason")) else str(record.get("blacklist_reason"))
-        enriched_payload["blacklist_priority"] = None if pd.isna(record.get("blacklist_priority")) else str(record.get("blacklist_priority"))
-        enriched_payload["blacklist_jurisdiction"] = None if pd.isna(record.get("blacklist_jurisdiction")) else str(record.get("blacklist_jurisdiction"))
-
-        priority = str(enriched_payload.get("blacklist_priority", "")).upper()
-        priority_to_level = {"LOW": 1, "MEDIUM": 2, "HIGH": 2, "CRITICAL": 3}
-        enriched_payload["threat_level"] = priority_to_level.get(priority, 2)
-
-    return enriched_payload
+    return enrich_payload_from_anpr_index(payload, rto_db)
 
 
 async def generate_dispatch_plan(threat_payload: dict[str, Any], sop_context: str) -> dict[str, Any]:

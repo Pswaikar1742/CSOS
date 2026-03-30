@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -112,3 +113,34 @@ async def ingest(payload: dict[str, Any]) -> dict[str, Any]:
 @app.post("/threat")
 async def threat(payload: dict[str, Any]) -> dict[str, Any]:
     return await ingest(payload)
+
+
+@app.post("/api/hitl-action")
+async def hitl_action(payload: dict[str, Any]) -> dict[str, Any]:
+    action = str(payload.get("action", "")).strip().lower()
+    incident_id = str(payload.get("incident_id", "")).strip()
+
+    if action not in {"dispatch", "false_alarm"}:
+        raise HTTPException(status_code=422, detail="'action' must be 'dispatch' or 'false_alarm'")
+    if not incident_id:
+        raise HTTPException(status_code=422, detail="'incident_id' is required")
+
+    status = "DISPATCHED" if action == "dispatch" else "FALSE_ALARM"
+    dept = str(payload.get("dept", "god-view"))
+
+    event = {
+        "type": "hitl_action",
+        "incident_id": incident_id,
+        "action": action,
+        "status": status,
+        "role": payload.get("role"),
+        "dept": dept,
+    }
+
+    await manager.broadcast_to_dept(json.dumps(event), dept)
+
+    return {
+        "accepted": True,
+        "status": status,
+        "incident_id": incident_id,
+    }
