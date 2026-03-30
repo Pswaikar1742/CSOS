@@ -63,15 +63,15 @@ async def health() -> dict[str, Any]:
 
 
 @app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: str) -> None:
-    await manager.connect(websocket)
+async def websocket_endpoint(websocket: WebSocket, client_id: str, dept: str = "god-view") -> None:
+    await manager.connect(websocket, dept)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, dept)
     except Exception:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, dept)
 
 
 @app.post("/api/ingest")

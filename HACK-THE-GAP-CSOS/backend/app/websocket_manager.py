@@ -1,45 +1,33 @@
 from __future__ import annotations
 
-import json
-from collections.abc import Iterable
-
 from fastapi import WebSocket
 
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: set[WebSocket] = set()
+        self.active_connections: dict[str, list[WebSocket]] = {
+            "police": [],
+            "rto": [],
+            "sanitation": [],
+            "god-view": [],
+        }
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket, dept: str) -> None:
         await websocket.accept()
-        self.active_connections.add(websocket)
+        selected_dept = dept if dept in self.active_connections else "god-view"
+        self.active_connections[selected_dept].append(websocket)
 
-    def disconnect(self, websocket: WebSocket) -> None:
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, dept: str) -> None:
+        selected_dept = dept if dept in self.active_connections else "god-view"
+        if websocket in self.active_connections[selected_dept]:
+            self.active_connections[selected_dept].remove(websocket)
 
-    async def broadcast(self, message: str) -> None:
-        payload = self._parse_json_message(message)
-        stale_connections: list[WebSocket] = []
-
-        for connection in self._snapshot_connections():
-            try:
-                await connection.send_json(payload)
-            except Exception:
-                stale_connections.append(connection)
-
-        for stale_connection in stale_connections:
-            self.disconnect(stale_connection)
-
-    def _snapshot_connections(self) -> Iterable[WebSocket]:
-        return tuple(self.active_connections)
-
-    @staticmethod
-    def _parse_json_message(message: str) -> dict:
-        try:
-            payload = json.loads(message)
-            if isinstance(payload, dict):
-                return payload
-            return {"data": payload}
-        except json.JSONDecodeError:
-            return {"message": message}
+    async def broadcast_to_dept(self, message: str, dept: str) -> None:
+        targets = [dept, "god-view"]
+        for target in targets:
+            for connection in list(self.active_connections.get(target, [])):
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    if connection in self.active_connections.get(target, []):
+                        self.active_connections[target].remove(connection)
