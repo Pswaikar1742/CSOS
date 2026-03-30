@@ -1,0 +1,25 @@
+HACK-THE-GAP-CSOS/
+├── backend/                   # FastAPI, Redis TTL, LangGraph (Port 8000)
+│   ├── app/
+│   │   ├── api.py             # Webhook endpoints (Vision & WhatsApp)
+│   │   ├── sieve.py           # The Math! (Redis TTL & Bloom Filter logic)
+│   │   └── agents.py          # FastRouter/Claude API for NLP routing
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                  # Next.js 14, Mapbox, Tailwind (Port 3000)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── police/        # Red UI
+│   │   │   ├── rto/           # Blue UI
+│   │   │   └── sanitation/    # Green UI
+│   │   └── components/        # Mapbox Core & Neural Stream Sidebar
+│   ├── package.json
+│   └── Dockerfile
+├── vision/                    # The Python Emulator (Zero-GPU Demo Trick)
+│   ├── streams/               # 4 x 15-sec .mp4 YouTube clips
+│   ├── mock_detections/       # Pre-processed JSON outputs from YOLO
+│   └── emulator.py            # Reads MP4 + JSON and POSTs to Backend
+├── data/                      # Mock Databases (CSV)
+│   ├── anpr_db.csv            # 100 fake Indian plates + owner names
+│   └── sops/                  # 3 PDFs of Govt Rules (for RAG)
+└── docker-compose.yml         # ONE COMMAND TO BOOT EVERYTHING
