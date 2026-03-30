@@ -14,6 +14,36 @@ const BACKEND_WS_BASE = (
   process.env.NEXT_PUBLIC_BACKEND_WS_BASE || BACKEND_HTTP_BASE.replace(/^http/i, 'ws')
 ).replace(/\/$/, '');
 
+const CAMERA_LOCATION_HINTS: Record<string, { lat: number; lng: number; ward: string }> = {
+  CAM_CIDCO_N6: { lat: 19.8890, lng: 75.3620, ward: 'CIDCO N-6' },
+  CAM_KRANTI_CHOWK: { lat: 19.8732, lng: 75.3262, ward: 'Kranti Chowk' },
+  CAM_AURANGPURA: { lat: 19.8824, lng: 75.3245, ward: 'Aurangpura' },
+  CAM_BEED_BYPASS: { lat: 19.8550, lng: 75.3500, ward: 'Beed Bypass' },
+  CAM_RAILWAY_STATION_ROAD: { lat: 19.8766, lng: 75.3434, ward: 'Railway Station Road' },
+};
+
+function toNumberOrNull(value: unknown): number | null {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function resolveIncidentGeo(payload: Record<string, unknown>): { lat: number; lng: number; wardHint?: string } {
+  const lat = toNumberOrNull(payload.latitude ?? payload.lat);
+  const lng = toNumberOrNull(payload.longitude ?? payload.lng);
+  const cameraId = String(payload.camera_id || '').trim();
+
+  if (lat !== null && lng !== null) {
+    return { lat, lng, wardHint: String(payload.ward || '') || undefined };
+  }
+
+  const cameraHint = CAMERA_LOCATION_HINTS[cameraId];
+  if (cameraHint) {
+    return { lat: cameraHint.lat, lng: cameraHint.lng, wardHint: cameraHint.ward };
+  }
+
+  return { lat: 19.8762, lng: 75.3433, wardHint: 'City Command' };
+}
+
 function buildWsUrl(wsDept: string): string {
   return `${BACKEND_WS_BASE}/ws/client1?dept=${encodeURIComponent(wsDept)}`;
 }
@@ -60,11 +90,7 @@ export function useCSOSSocket(dept?: string): SocketState {
       mockIntervalRef.current = null;
     }
 
-    // Filter mock incidents by department (god-view sees all)
-    const filtered = dept && dept !== 'god-view'
-      ? MOCK_INCIDENTS.filter((inc) => inc.dept === dept)
-      : MOCK_INCIDENTS;
-    setIncidents(filtered);
+    setIncidents([]);
 
     // Try WebSocket connection
     try {
@@ -85,16 +111,17 @@ export function useCSOSSocket(dept?: string): SocketState {
             const payload = data.payload || {};
             const threatClass = String(payload.class || 'unknown').toUpperCase();
             const deptFromThreat = getDeptFromThreatClass(payload.class || '');
+            const geo = resolveIncidentGeo(payload as Record<string, unknown>);
             const incident: Incident = {
               id: data.incident_id || data.threat_key || `INC-${Date.now()}`,
               type: threatClass,
               dept: deptFromThreat,
-              lat: payload.lat || 19.8762,
-              lng: payload.lng || 75.3433,
+              lat: geo.lat,
+              lng: geo.lng,
               location: resolveLandmark(
-                Number(payload.lat ?? 19.8762),
-                Number(payload.lng ?? 75.3433),
-                String(payload.ward || payload.description || payload.camera_id || 'Unknown')
+                geo.lat,
+                geo.lng,
+                String(payload.ward || geo.wardHint || payload.camera_id || payload.description || 'Unknown')
               ),
               confidence: Number(payload.confidence ?? 0.5),
               status: 'AWAITING_VERIFICATION',
@@ -124,15 +151,14 @@ export function useCSOSSocket(dept?: string): SocketState {
             addLog(`[HITL] ${incidentId} → ${status}`);
           } else if (data.type === 'inter_agency_alert') {
             const payload = data.payload || {};
-            const lat = Number(payload.lat ?? 19.8762);
-            const lng = Number(payload.lng ?? 75.3433);
+            const geo = resolveIncidentGeo(payload as Record<string, unknown>);
             const incident: Incident = {
               id: String(data.incident_id || `IAA-${Date.now()}`),
               type: 'INTER-AGENCY ALERT',
               dept: 'rto',
-              lat,
-              lng,
-              location: get_csn_landmark(lat, lng),
+              lat: geo.lat,
+              lng: geo.lng,
+              location: resolveLandmark(geo.lat, geo.lng, String(payload.ward || geo.wardHint || payload.camera_id || 'Unknown')),
               confidence: 0.99,
               status: 'AWAITING_VERIFICATION',
               timestamp: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
