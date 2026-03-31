@@ -290,6 +290,7 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
         }
       };
     } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket unavailable — mock mode active');
       if (isMounted) {
         setIncidents((prev) => (prev.length ? prev : filtered));

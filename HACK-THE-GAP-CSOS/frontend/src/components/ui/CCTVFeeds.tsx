@@ -15,14 +15,12 @@ export function CCTVFeeds({ department = 'god-view', maxFeeds = 4, compact = fal
   const [selectedStream, setSelectedStream] = useState<CameraStream | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const available = department
-      ? getStreamsByDepartment(department as any)
+      ? getStreamsByDepartment(department)
       : getAllActiveStreams();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStreams(available.slice(0, maxFeeds));
     if (available.length > 0 && !selectedStream) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedStream(available[0]);
     }
   }, [department, maxFeeds, selectedStream]);

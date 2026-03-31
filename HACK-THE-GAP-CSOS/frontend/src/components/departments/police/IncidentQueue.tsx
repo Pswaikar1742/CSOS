@@ -22,7 +22,6 @@ interface IncidentQueueProps {
 }
 
 function formatElapsed(detectedAt: number): string {
-  // eslint-disable-next-line react-hooks/purity
   const sec = Math.max(1, Math.floor((Date.now() - detectedAt) / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.floor(sec / 60);
@@ -31,7 +30,6 @@ function formatElapsed(detectedAt: number): string {
 }
 
 function isEscalated(detectedAt: number): boolean {
-  // eslint-disable-next-line react-hooks/purity
   return Date.now() - detectedAt > 5 * 60 * 1000; // > 5 minutes
 }
 
@@ -41,7 +39,6 @@ export default function IncidentQueue({ incidents, onAssign, onSelect }: Inciden
 
   // Force re-render every 10s to update elapsed timers
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     const timer = setInterval(() => setTick((t) => t + 1), 10_000);
     return () => clearInterval(timer);
   }, []);
