@@ -247,33 +247,19 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
   );
 
   const potholeIncidents = alignedActiveIncidents.filter((incident) => incident.type.toUpperCase().includes('POTHOLE'));
-  const showPotholePanel = role === 'rto' || role === 'god-view';
-  const latestPothole = potholeIncidents
-    .slice()
-    .sort((left, right) => right.detectedAt - left.detectedAt)[0] ?? null;
-
   const navigateView = useCallback((view: string | null) => {
-    if (view === 'map') {
-      setViewMode('map');
-      mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    if (view === 'incidents') {
-      incidentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    if (view === 'reports') {
-      setViewMode('map');
-      reportsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      return;
-    }
-    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // No-op: view switching is now handled by CommandLayout navigation
+    // This function kept for event compatibility
+    return;
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    navigateView(searchParams.get('view'));
-  }, [searchParams, navigateView]);
+  const currentView = useMemo(() => {
+    const view = searchParams.get('view');
+    if (view === 'map' || view === 'incidents' || view === 'reports') {
+      return view;
+    }
+    return 'dashboard';
+  }, [searchParams]);
 
   useEffect(() => {
     const onNavigate = (event: Event) => {

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Blue background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1e3a5f" stroke="#002147" stroke-width="2"/>
+  
+  <!-- White text: CSM -->
+  <text x="100" y="115" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="white">CSM</text>
+  
+  <!-- Accent bars -->
+  <rect x="20" y="40" width="160" height="4" fill="#00a8e8" opacity="0.8"/>
+  <rect x="20" y="156" width="160" height="4" fill="#00a8e8" opacity="0.8"/>
+  
+  <!-- Small detail: Municipal Corporation indicator -->
+  <text x="100" y="170" font-family="Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#00a8e8" opacity="0.8">MUNICIPAL CORP</text>
+</svg>

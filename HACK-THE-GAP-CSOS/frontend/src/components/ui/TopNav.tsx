@@ -77,12 +77,12 @@ export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
         {/* Left: Logos + Title */}
         <div className="flex items-center gap-3 min-w-0">
           <img
-            src="/CSMC-LOGO.png"
+            src="/CSMC-LOGO.svg"
             alt="CSMC Logo"
             className="h-10 w-10 rounded border-2 border-slate-300 bg-white object-contain shrink-0"
           />
           <img
-            src="/placeholder-smartcity.png"
+            src="/smartcity-logo.svg"
             alt="Smart City Mission Logo"
             className="h-10 w-10 rounded border-2 border-slate-300 bg-white object-contain shrink-0"
           />

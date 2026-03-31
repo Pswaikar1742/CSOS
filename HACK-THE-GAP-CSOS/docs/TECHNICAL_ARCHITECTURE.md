@@ -338,7 +338,116 @@ docker-compose up -d
 ---
 
 ## Monitoring & Logging
+Role: You are a Senior UI/UX Designer + Frontend Product Engineer helping improve a web dashboard for a city command center.
+Project: CSOS (Chhatrapati Sambhajinagar Operating System) dashboard web app.
+Goal
+Implement the following UI/UX + navigation fixes so the dashboard branding is correct and the left navigation actually works to switch between full views for each module.
 
+Fixes / Requirements
+1) Branding fix (Top-left of dashboard)
+
+Remove “CSOS v2.0”
+Show only:
+
+Primary title: CSOS
+Subtitle directly below: (Chhatrapati Sambhajinagar Operating System)
+
+
+Placement: Top-left corner of the dashboard (left side header area)
+
+
+2) Left navigation must become functional
+Currently the left navigation tabs exist but have no functionality. Implement functional navigation with these behaviors:
+Navigation items
+
+Dashboard
+Live Map
+Incidents
+Reports
+
+Expected behavior (must be exact)
+
+
+Dashboard tab
+
+Keeps the current default dashboard view.
+This is the default landing view.
+
+
+
+Live Map tab
+
+Opens only the map in full view (map takes the main content area fully).
+Hide dashboard widgets/cards when map is selected.
+The left nav remains visible for switching.
+
+
+
+Incidents tab
+
+Shows only incidents list/view, not the dashboard.
+Each incident row/card must have an “Act” button.
+“Act” is for taking operational action (for operators / responders).
+
+✅ Additionally for City Command view:
+
+Instead of action controls, show:
+
+What actions were taken
+By whom
+Time taken
+Status
+Any notes/logs tied to the incident
+
+
+City Command should have view-only access to actions taken.
+
+
+
+Reports tab
+
+Shows reports for incidents (view-only for City Command)
+Must include monitorable aspects such as:
+
+Who did what (action owner)
+Timeline / timestamps
+Time taken / resolution duration
+Status transitions
+Any SLA / response metrics if available
+
+
+Present as a structured report list and allow opening a report detail view.
+
+
+
+
+Implementation Guidance
+
+Use a single-page app style navigation: clicking left nav switches main content pane without reloading the whole app.
+Keep the left nav persistent across views.
+Ensure each tab renders an isolated module:
+
+DashboardModule
+LiveMapModule
+IncidentsModule
+ReportsModule
+
+
+
+
+Deliverables (What you must output)
+
+A clear UI behavior specification (bullet list per tab).
+A recommended layout structure (header + left nav + main content).
+A component/page map (what components appear in each tab).
+Role-based behavior: Operator vs City Command access rules for Incidents + Reports.
+A short acceptance test checklist (Given/When/Then style) to confirm everything works.
+
+Constraints
+
+Do not change unrelated design elements.
+Do not add new tabs.
+Make behavior consistent and predictable.
 **Backend Logs:**
 - Incident ingestion events (source, class, confidence)
 - Dispatch execution (officer, action, timestamp)

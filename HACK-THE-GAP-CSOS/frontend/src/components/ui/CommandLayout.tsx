@@ -134,9 +134,20 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
             <Radio className="h-4 w-4" />
           </div>
           {!collapsed && (
-            <span className="text-xs font-bold tracking-wide uppercase text-[#002147] truncate">
-              CSOS v2.0
-            </span>
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className="text-xs font-bold tracking-wide uppercase text-[#002147] truncate">
+                CSOS
+              </span>
+              <span className="text-[9px] text-slate-600 leading-tight truncate">
+                (Chhatrapati Sambhajinagar Operating System)
+              </span>
+            </div>
+          )}
+          {collapsed && (
+            <div 
+              className="absolute left-16 top-0 bg-slate-900 text-white text-xs font-medium px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              title="CSOS - Chhatrapati Sambhajinagar Operating System"
+            />
           )}
         </div>
 
