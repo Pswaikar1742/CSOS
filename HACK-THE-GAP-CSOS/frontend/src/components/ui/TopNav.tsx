@@ -43,6 +43,7 @@ export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
   useEffect(() => {
     // Read operator name from cookie
     const name = getCookie('csos_operator');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOperatorName(name || 'Officer');
 
     // Live clock
@@ -76,7 +77,7 @@ export default function TopNav({ role, alertCount = 0 }: TopNavProps) {
         {/* Left: Logos + Title */}
         <div className="flex items-center gap-3 min-w-0">
           <img
-            src="/placeholder-csmc.png"
+            src="/CSMC-LOGO.png"
             alt="CSMC Logo"
             className="h-10 w-10 rounded border-2 border-slate-300 bg-white object-contain shrink-0"
           />

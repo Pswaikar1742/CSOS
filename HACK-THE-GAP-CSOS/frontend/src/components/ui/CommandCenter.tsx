@@ -11,6 +11,7 @@ import ThreatCard from '@/components/ui/ThreatCard';
 import CameraGrid from '@/components/ui/CameraGrid';
 import { useCSOSSocket } from '@/lib/socket';
 import { ROLE_THEMES } from '@/lib/types';
+import { withPersonaCoverage } from '@/lib/incident-augmentation';
 import type { CSOSRole } from '@/lib/types';
 import type { Incident } from '@/lib/mock-data';
 import availableUnitsData from '@/lib/available_units.json';
@@ -112,6 +113,10 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
   const activeIncidents = useMemo(
     () => scopedIncidents.filter((incident) => incident.status === 'AWAITING_VERIFICATION'),
     [scopedIncidents]
+  );
+  const alignedActiveIncidents = useMemo(
+    () => withPersonaCoverage(activeIncidents, role),
+    [activeIncidents, role]
   );
 
   useEffect(() => {
@@ -241,7 +246,7 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
     [backendHttpUrl]
   );
 
-  const potholeIncidents = activeIncidents.filter((incident) => incident.type.toUpperCase().includes('POTHOLE'));
+  const potholeIncidents = alignedActiveIncidents.filter((incident) => incident.type.toUpperCase().includes('POTHOLE'));
   const showPotholePanel = role === 'rto' || role === 'god-view';
   const latestPothole = potholeIncidents
     .slice()
@@ -266,6 +271,7 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     navigateView(searchParams.get('view'));
   }, [searchParams, navigateView]);
 
@@ -311,15 +317,16 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
 
           {viewMode === 'map' ? (
             <CityMap
-              incidents={activeIncidents}
+              incidents={alignedActiveIncidents}
               markerColor={theme.markerColor}
               deptScope={dept ? (dept as Incident['dept']) : role}
               incidentSource="input-only"
+              enableTransientIncidents={false}
               onIncidentClick={setFocusedIncident}
               focusIncident={focusedIncident}
             />
           ) : (
-            <CameraGrid incidents={activeIncidents} />
+            <CameraGrid incidents={alignedActiveIncidents} />
           )}
 
           <div ref={reportsRef} id="reports-panel">
@@ -369,13 +376,13 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {activeIncidents.length === 0 && (
+            {alignedActiveIncidents.length === 0 && (
               <div className="text-sm text-slate-500 p-3 border border-dashed border-slate-300 rounded-lg">
                 No verified incidents in queue.
               </div>
             )}
 
-            {activeIncidents.map((incident) => (
+            {alignedActiveIncidents.map((incident) => (
               <ThreatCard
                 key={incident.id}
                 incidentId={incident.id}
@@ -389,11 +396,17 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
                 dispatchPlan={incident.dispatchPlan}
                 dispatchLabel={resolveDispatchLabelForIncident(incident)}
                 status={incident.status}
+                disabled={incident.id.startsWith('SIM-')}
                 onDispatch={() => {
+                  if (incident.id.startsWith('SIM-')) {
+                    setToastMessage('Simulation incident is synced for map/queue realism only. Awaiting backend verification.');
+                    window.setTimeout(() => setToastMessage(null), 3500);
+                    return Promise.resolve({ auditHash: 'SIMULATED' });
+                  }
                   setFocusedIncident(incident);
                   return sendHitlAction(incident);
                 }}
-                onWhatsappAlert={() => sendWhatsappAlert(incident)}
+                onWhatsappAlert={incident.id.startsWith('SIM-') ? undefined : () => sendWhatsappAlert(incident)}
               />
             ))}
           </div>

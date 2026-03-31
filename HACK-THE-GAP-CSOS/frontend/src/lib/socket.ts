@@ -99,6 +99,7 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
   ]);
   const wsRef = useRef<WebSocket | null>(null);
   const mockIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const didInitializeRef = useRef(false);
   const onVerifiedThreat = options?.onVerifiedThreat;
 
   const addLog = useCallback((log: string) => {
@@ -168,14 +169,14 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
       mockIntervalRef.current = null;
     }
 
+    let isMounted = true;
     const filtered = dept && dept !== 'god-view'
       ? MOCK_INCIDENTS.filter((inc) => inc.dept === dept)
       : MOCK_INCIDENTS;
-    setIncidents([]);
 
     void (async () => {
       const hydrated = await hydrateIncidentsFromBackend();
-      if (!hydrated) {
+      if (!hydrated && isMounted) {
         addLog('[GOVERNANCE] [ACTION_TAKEN] No persisted incidents available from backend map registry.');
       }
     })();
@@ -188,11 +189,14 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setConnected(true);
-        addLog(`[GOVERNANCE] [ACTION_TAKEN] WebSocket CONNECTED — channel: ${wsDept}`);
+        if (isMounted) {
+          setConnected(true);
+          addLog(`[GOVERNANCE] [ACTION_TAKEN] WebSocket CONNECTED — channel: ${wsDept}`);
+        }
       };
 
       ws.onmessage = (event) => {
+        if (!isMounted) return;
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'verified_threat') {
@@ -271,19 +275,25 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
       };
 
       ws.onclose = () => {
-        setConnected(false);
-        addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket disconnected — falling back to mock data');
-        setIncidents((prev) => (prev.length ? prev : filtered));
+        if (isMounted) {
+          setConnected(false);
+          addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket disconnected — falling back to mock data');
+          setIncidents((prev) => (prev.length ? prev : filtered));
+        }
       };
 
       ws.onerror = () => {
-        setConnected(false);
-        addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket error — using mock data pipeline');
-        setIncidents((prev) => (prev.length ? prev : filtered));
+        if (isMounted) {
+          setConnected(false);
+          addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket error — using mock data pipeline');
+          setIncidents((prev) => (prev.length ? prev : filtered));
+        }
       };
     } catch {
       addLog('[GOVERNANCE] [ACTION_TAKEN] WebSocket unavailable — mock mode active');
-      setIncidents((prev) => (prev.length ? prev : filtered));
+      if (isMounted) {
+        setIncidents((prev) => (prev.length ? prev : filtered));
+      }
     }
 
     // Generate mock neural logs on interval for demo
@@ -292,6 +302,7 @@ export function useCSOSSocket(dept?: string, options?: SocketOptions): SocketSta
     }, 1500 + Math.random() * 2000);
 
     return () => {
+      isMounted = false;
       wsRef.current?.close();
       wsRef.current = null;
       if (mockIntervalRef.current) {

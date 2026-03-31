@@ -51,6 +51,7 @@ export default function LandingPage() {
     // Throttle to ~30fps to avoid DOM spam
     let last = 0;
     const throttled = (e: MouseEvent) => {
+      // eslint-disable-next-line react-hooks/purity
       const now = Date.now();
       if (now - last < 33) return;
       last = now;

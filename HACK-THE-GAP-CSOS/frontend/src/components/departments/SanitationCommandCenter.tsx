@@ -104,6 +104,7 @@ export default function SanitationCommandCenter() {
         confidence: complaint.priority === 'high' ? 0.95 : complaint.priority === 'medium' ? 0.85 : 0.75,
         status: complaint.status === 'assigned' ? 'DISPATCHED' : 'AWAITING_VERIFICATION',
         timestamp: complaint.reportedAt,
+        // eslint-disable-next-line react-hooks/purity
         detectedAt: Date.now() - 60_000,
         dispatchPlan: complaint.assignedTruck
           ? `Assigned ${complaint.assignedTruck}. ETA ${complaint.eta}.`
@@ -123,6 +124,7 @@ export default function SanitationCommandCenter() {
       confidence: 0.99,
       status: truck.status === 'active' ? 'DISPATCHED' : 'AWAITING_VERIFICATION',
       timestamp: truck.lastUpdate,
+      // eslint-disable-next-line react-hooks/purity
       detectedAt: Date.now() - 20_000,
       dispatchPlan: `${truck.id} collecting ${truck.binsCollected}/${truck.totalBins} bins. Driver: ${truck.driver}.`,
     }));

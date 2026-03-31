@@ -19,6 +19,7 @@ interface CityMapProps {
   markerColor: string;
   deptScope?: Incident['dept'] | 'god-view';
   incidentSource?: 'merged' | 'input-only';
+  enableTransientIncidents?: boolean;
   onIncidentClick?: (incident: Incident) => void;
   focusIncident?: Incident | null;
   onCameraNodeClick?: (cameraId: string, areaName: string) => void;
@@ -108,6 +109,7 @@ export default function CityMap({
   markerColor,
   deptScope = 'god-view',
   incidentSource = 'merged',
+  enableTransientIncidents = true,
   onIncidentClick,
   focusIncident,
   onCameraNodeClick,
@@ -197,18 +199,25 @@ export default function CityMap({
 
   // Update markers when incidents change
   const allIncidents = useMemo(() => {
+    const transient = enableTransientIncidents ? transientIncidents : [];
     const merged = incidentSource === 'input-only'
-      ? [...incidents, ...transientIncidents]
-      : [...persistedIncidents, ...incidents, ...transientIncidents];
+      ? [...incidents, ...transient]
+      : [...persistedIncidents, ...incidents, ...transient];
     const unique = new Map<string, Incident>();
     merged.forEach((incident) => {
       if (deptScope !== 'god-view' && incident.dept !== deptScope) return;
       unique.set(incident.id, incident);
     });
     return Array.from(unique.values());
-  }, [incidents, persistedIncidents, transientIncidents, deptScope, incidentSource]);
+  }, [incidents, persistedIncidents, transientIncidents, deptScope, incidentSource, enableTransientIncidents]);
 
   useEffect(() => {
+    if (!enableTransientIncidents) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTransientIncidents([]);
+      return;
+    }
+
     const onTransientMarker = (event: Event) => {
       const customEvent = event as CustomEvent<{ lat?: number; lng?: number; dept?: Incident['dept'] }>;
       const lat = Number(customEvent.detail?.lat);
@@ -239,10 +248,11 @@ export default function CityMap({
 
     window.addEventListener('csos:add-marker', onTransientMarker as EventListener);
     return () => window.removeEventListener('csos:add-marker', onTransientMarker as EventListener);
-  }, [deptScope]);
+  }, [deptScope, enableTransientIncidents]);
 
   useEffect(() => {
     if (incidentSource === 'input-only') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPersistedIncidents([]);
       return;
     }

@@ -245,6 +245,15 @@ async def map_points(limit: int = 300) -> dict[str, Any]:
     }
 
 
+@app.get("/api/incidents")
+async def incidents(limit: int = 300) -> dict[str, Any]:
+    rows = await get_recent_incident_points(limit=limit, pool=app.state.db_pool)
+    return {
+        "count": len(rows),
+        "incidents": rows,
+    }
+
+
 @app.get("/api/camera-nodes")
 async def camera_nodes() -> dict[str, Any]:
     nodes = get_camera_nodes()
@@ -524,21 +533,27 @@ async def video_feed(camera_id: str) -> Any:
     In production, this would connect to the vision detector's frame buffer
     or a Redis-backed frame queue from the multi_stream_detector.py process.
     """
-    import io
-    
+    fallback_jpeg = base64.b64decode(
+        "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////"
+        "2wBDAf//////////////////////////////////////////////////////////////////////////////////////"
+        "wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAVEQEBAAAAAAAAAAAAAAAAAAABAP/"
+        "aAAwDAQACEAMQAAAB3A//xAAVEAEBAAAAAAAAAAAAAAAAAAABAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAA"
+        "AAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAA"
+        "AAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9k="
+    )
+
     try:
         import cv2
-    except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="OpenCV not available for frame generation"
-        )
+        import numpy as np
+    except Exception:
+        cv2 = None
+        np = None
     
     async def frame_generator() -> Any:
         """Generate MJPEG frames at ~15fps."""
         try:
             frame_count = 0
-            frame_width, frame_height = 640, 480
+            frame_width, frame_height = 640, 360
             
             # Camera metadata for overlay text
             camera_labels = {
@@ -551,54 +566,33 @@ async def video_feed(camera_id: str) -> Any:
             camera_label = camera_labels.get(camera_id, camera_id)
             
             while True:
-                # Create a mock frame (gradient + timestamp + camera label)
-                frame = cv2.Mat(frame_height, frame_width, cv2.CV_8UC3)
-                
-                # Fill with gradient background
-                for y in range(frame_height):
-                    color_val = int(20 + (y / frame_height) * 100)
-                    frame[y, :] = [color_val, color_val + 20, color_val + 40]
-                
-                # Add timestamp
-                timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-                cv2.putText(
-                    frame,
-                    timestamp,
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (100, 255, 100),
-                    2
-                )
-                
-                # Add camera label
-                cv2.putText(
-                    frame,
-                    f"[LIVE] {camera_label}",
-                    (10, 70),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.9,
-                    (50, 200, 255),
-                    2
-                )
-                
-                # Add mock threat indicator
-                threat_types = ["NO THREAT", "WEAPON DETECTED", "COLLISION DETECTED", "POTHOLE DETECTED"]
-                threat_idx = frame_count % 4
-                threat_color = (0, 255, 0) if threat_idx == 0 else (0, 0, 255)
-                cv2.putText(
-                    frame,
-                    f"Status: {threat_types[threat_idx]}",
-                    (10, frame_height - 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    threat_color,
-                    2
-                )
-                
-                # Encode frame as JPEG
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                frame_bytes = buffer.tobytes()
+                if cv2 is None or np is None:
+                    frame_bytes = fallback_jpeg
+                else:
+                    frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+                    for y in range(frame_height):
+                        color_val = int(20 + (y / frame_height) * 80)
+                        frame[y, :] = [color_val, min(color_val + 20, 255), min(color_val + 40, 255)]
+
+                    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+                    cv2.putText(frame, timestamp, (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (120, 230, 120), 1)
+                    cv2.putText(frame, f"[LIVE] {camera_label}", (12, 56), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (80, 200, 255), 2)
+
+                    threat_types = ["NO THREAT", "WEAPON DETECTED", "COLLISION DETECTED", "POTHOLE DETECTED"]
+                    threat_idx = frame_count % 4
+                    threat_color = (0, 255, 0) if threat_idx == 0 else (0, 0, 255)
+                    cv2.putText(
+                        frame,
+                        f"Status: {threat_types[threat_idx]}",
+                        (12, frame_height - 18),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.55,
+                        threat_color,
+                        2,
+                    )
+
+                    ok, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                    frame_bytes = buffer.tobytes() if ok else fallback_jpeg
                 
                 # Yield MJPEG boundary and frame
                 yield (
@@ -609,7 +603,7 @@ async def video_feed(camera_id: str) -> Any:
                 )
                 
                 frame_count += 1
-                await asyncio.sleep(0.067)  # ~15fps
+                await asyncio.sleep(0.12)  # ~8fps
                 
         except Exception as error:
             print(f"[ERROR] Frame generation failed for {camera_id}: {error}")

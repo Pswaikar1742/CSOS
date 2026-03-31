@@ -13,7 +13,7 @@
  * - Scrolling alerts ticker for cross-department events
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -21,9 +21,11 @@ import TopNav from '@/components/ui/TopNav';
 import NeuralStream from '@/components/ui/NeuralStream';
 import StatsCard from '@/components/ui/StatsCard';
 import AlertBanner, { useAlerts } from '@/components/ui/AlertBanner';
+import CCTVFeeds from '@/components/ui/CCTVFeeds';
 import { useCSOSSocket } from '@/lib/socket';
 import { RECENT_CROSS_ALERTS } from '@/lib/mock-city-kpis';
 import type { Incident } from '@/lib/mock-data';
+import { withPersonaCoverage } from '@/lib/incident-augmentation';
 import LiveCameraOverlay from '@/components/ui/LiveCameraOverlay';
 import { ShieldCheck, Gauge, Sparkles, Star, ArrowRight } from 'lucide-react';
 
@@ -66,6 +68,15 @@ export default function CityCommandCenter() {
   const incidentsRef = useRef<HTMLDivElement>(null);
   const logsRef = useRef<HTMLDivElement>(null);
   const activeIncidents = incidents.filter((incident) => incident.status === 'AWAITING_VERIFICATION');
+  const alignedActiveIncidents = useMemo(
+    () => withPersonaCoverage(activeIncidents, 'god-view'),
+    [activeIncidents]
+  );
+  const alignedCounts = useMemo(() => ({
+    police: alignedActiveIncidents.filter((incident) => incident.dept === 'police').length,
+    rto: alignedActiveIncidents.filter((incident) => incident.dept === 'rto').length,
+    sanitation: alignedActiveIncidents.filter((incident) => incident.dept === 'sanitation').length,
+  }), [alignedActiveIncidents]);
 
   useEffect(() => {
     let mounted = true;
@@ -167,14 +178,14 @@ export default function CityCommandCenter() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#F0F2F5]" ref={rootRef}>
-      <TopNav role="god-view" alertCount={incidents.filter(i => i.status === 'AWAITING_VERIFICATION').length} />
+      <TopNav role="god-view" alertCount={alignedActiveIncidents.length} />
 
       {/* KPI Bar */}
       <div className="shrink-0 px-4 py-3 bg-white border-b border-slate-200">
         <div className="grid grid-cols-4 gap-3">
           <StatsCard
             title="Open Alerts"
-            value={summary?.awaiting_verification ?? incidents.filter((incident) => incident.status === 'AWAITING_VERIFICATION').length}
+            value={alignedActiveIncidents.length}
             icon={<ShieldCheck className="h-4 w-4" />}
             variant="city"
             trend="same"
@@ -182,7 +193,7 @@ export default function CityCommandCenter() {
           />
           <StatsCard
             title="RTO Alerts"
-            value={summary?.by_dept.rto ?? 0}
+            value={alignedCounts.rto}
             icon={<Gauge className="h-4 w-4" />}
             variant="rto"
             trend="same"
@@ -190,7 +201,7 @@ export default function CityCommandCenter() {
           />
           <StatsCard
             title="Sanitation Alerts"
-            value={summary?.by_dept.sanitation ?? 0}
+            value={alignedCounts.sanitation}
             icon={<Sparkles className="h-4 w-4" />}
             variant="sanitation"
             trend="same"
@@ -198,7 +209,7 @@ export default function CityCommandCenter() {
           />
           <StatsCard
             title="Total Incidents"
-            value={summary?.total_incidents ?? incidents.length}
+            value={alignedActiveIncidents.length}
             icon={<Star className="h-4 w-4" />}
             variant="city"
             trend="same"
@@ -231,10 +242,11 @@ export default function CityCommandCenter() {
             <p className="text-[10px] text-slate-500">All departments — unified view</p>
           </div>
           <CityMap
-            incidents={activeIncidents}
+            incidents={alignedActiveIncidents}
             markerColor="#a855f7"
             deptScope="god-view"
             incidentSource="input-only"
+            enableTransientIncidents={false}
             onIncidentClick={setFocusedIncident}
             focusIncident={focusedIncident}
             onCameraNodeClick={(cameraId, areaName) => setSelectedCamera({ cameraId, areaName })}
@@ -253,6 +265,12 @@ export default function CityCommandCenter() {
 
         {/* Right: Department Cards + Insights (50%) */}
         <div className="w-1/2 flex flex-col gap-3 overflow-y-auto" ref={incidentsRef} id="incidents-panel">
+          {/* CCTV Feeds Section */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 mb-3">Live CCTV Coverage</h3>
+            <CCTVFeeds department="god-view" maxFeeds={6} compact={true} />
+          </div>
+
           {/* Department Status Cards */}
           <div className="grid grid-cols-1 gap-3">
             {[
@@ -260,7 +278,7 @@ export default function CityCommandCenter() {
                 name: 'Police Command',
                 role: 'police',
                 color: '#DC2626',
-                activeIncidents: summary?.by_dept.police ?? 0,
+                activeIncidents: alignedCounts.police,
                 responseTime: 'Live via dispatch logs',
                 unitsAvailable: `${summary?.units.police ?? 0} configured`,
                 status: (summary?.by_dept.police ?? 0) > 0 ? 'operational' : 'warning',
@@ -270,7 +288,7 @@ export default function CityCommandCenter() {
                 name: 'RTO Command',
                 role: 'rto',
                 color: '#1E40AF',
-                activeIncidents: summary?.by_dept.rto ?? 0,
+                activeIncidents: alignedCounts.rto,
                 responseTime: 'Live via dispatch logs',
                 unitsAvailable: `${summary?.units.rto ?? 0} configured`,
                 status: (summary?.by_dept.rto ?? 0) > 0 ? 'operational' : 'warning',
@@ -280,7 +298,7 @@ export default function CityCommandCenter() {
                 name: 'Sanitation Control',
                 role: 'sanitation',
                 color: '#059669',
-                activeIncidents: summary?.by_dept.sanitation ?? 0,
+                activeIncidents: alignedCounts.sanitation,
                 responseTime: 'Live via dispatch logs',
                 unitsAvailable: `${summary?.units.sanitation ?? 0} configured`,
                 status: (summary?.by_dept.sanitation ?? 0) > 0 ? 'operational' : 'warning',
@@ -331,11 +349,11 @@ export default function CityCommandCenter() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">Total Incidents</span>
-                <span className="font-bold text-slate-900">{summary?.total_incidents ?? incidents.length}</span>
+                <span className="font-bold text-slate-900">{alignedActiveIncidents.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Open Queue</span>
-                <span className="font-bold text-slate-900">{summary?.awaiting_verification ?? 0}</span>
+                <span className="font-bold text-slate-900">{alignedActiveIncidents.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Dispatched</span>

@@ -108,9 +108,11 @@ export default function CommandLayout({ role, children }: CommandLayoutProps) {
   useEffect(() => {
     const view = searchParams.get('view');
     if (view === 'map' || view === 'incidents' || view === 'reports' || view === 'dashboard') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveNav(view);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveNav('dashboard');
   }, [searchParams]);
 
