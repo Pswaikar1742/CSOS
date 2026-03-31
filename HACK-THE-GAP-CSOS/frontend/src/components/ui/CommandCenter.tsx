@@ -9,6 +9,10 @@ import dynamic from 'next/dynamic';
 import NeuralStream from '@/components/ui/NeuralStream';
 import ThreatCard from '@/components/ui/ThreatCard';
 import CameraGrid from '@/components/ui/CameraGrid';
+import MapFullScreenView from '@/components/ui/MapFullScreenView';
+import IncidentsFullScreenView from '@/components/ui/IncidentsFullScreenView';
+import ReportsFullScreenView from '@/components/ui/ReportsFullScreenView';
+import DashboardView from '@/components/ui/DashboardView';
 import { useCSOSSocket } from '@/lib/socket';
 import { ROLE_THEMES } from '@/lib/types';
 import { withPersonaCoverage } from '@/lib/incident-augmentation';
@@ -97,17 +101,11 @@ function buildFormalIncidentId(incident: Incident): string {
 
 export default function CommandCenter({ role, dept }: CommandCenterProps) {
   const searchParams = useSearchParams();
-  const theme = ROLE_THEMES[role];
   const { incidents, neuralLogs } = useCSOSSocket(dept || role);
-  const [focusedIncident, setFocusedIncident] = useState<Incident | null>(null);
-  const [viewMode, setViewMode] = useState<'map' | 'cctv'>('map');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [units, setUnits] = useState<AvailableUnit[]>([]);
   const backendHttpUrl = BACKEND_HTTP_BASE;
   const rootRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<HTMLElement>(null);
-  const incidentsRef = useRef<HTMLElement>(null);
-  const reportsRef = useRef<HTMLDivElement>(null);
 
   const scopedIncidents = useMemo(() => applyRoleThreatFilter(incidents, role), [incidents, role]);
   const activeIncidents = useMemo(
@@ -261,143 +259,57 @@ export default function CommandCenter({ role, dept }: CommandCenterProps) {
     return 'dashboard';
   }, [searchParams]);
 
-  useEffect(() => {
-    const onNavigate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ target?: string }>;
-      navigateView(customEvent.detail?.target || 'dashboard');
-    };
-
-    window.addEventListener('csos:navigate', onNavigate as EventListener);
-    return () => window.removeEventListener('csos:navigate', onNavigate as EventListener);
-  }, [navigateView]);
-
+  // Render based on current view
   return (
     <div className="h-[calc(100vh-4rem)] p-4 relative bg-slate-50 font-sans" ref={rootRef}>
-      <div className="grid grid-cols-10 gap-4 h-full">
-        <section className="col-span-10 lg:col-span-7 h-full relative rounded border-2 border-slate-300 bg-white shadow-sm overflow-hidden" ref={mapRef} id="map-panel">
-          <div className="absolute top-3 left-3 z-20 px-3 py-2 rounded bg-white border-2 border-slate-300 shadow-sm">
-            <h2 className="text-xs font-semibold tracking-wide uppercase text-[#002147]">
-              CSOS Live Map — {theme.label}
-            </h2>
-            <p className="text-xs text-slate-700">Real-time verified incident focus</p>
-          </div>
+      {currentView === 'map' && (
+        <MapFullScreenView incidents={alignedActiveIncidents} role={role} />
+      )}
 
-          <div className="absolute top-3 right-3 z-20 rounded border-2 border-slate-300 bg-white shadow-sm p-1 flex gap-1">
-            <button
-              onClick={() => setViewMode('map')}
-              className={`px-3 py-1.5 text-xs font-medium rounded ${
-                viewMode === 'map' ? 'bg-blue-900 text-white' : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              Map View
-            </button>
-            <button
-              onClick={() => setViewMode('cctv')}
-              className={`px-3 py-1.5 text-xs font-medium rounded ${
-                viewMode === 'cctv' ? 'bg-blue-900 text-white' : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              CCTV Grid
-            </button>
-          </div>
+      {currentView === 'incidents' && (
+        <IncidentsFullScreenView
+          incidents={alignedActiveIncidents}
+          role={role}
+          onDispatch={(incident) => {
+            if (incident.id.startsWith('SIM-')) {
+              setToastMessage('Simulation incident is synced for map/queue realism only. Awaiting backend verification.');
+              window.setTimeout(() => setToastMessage(null), 3500);
+              return Promise.resolve({ auditHash: 'SIMULATED' });
+            }
+            return sendHitlAction(incident);
+          }}
+          onWhatsappAlert={(incident) => {
+            if (incident.id.startsWith('SIM-')) return Promise.resolve();
+            return sendWhatsappAlert(incident);
+          }}
+        />
+      )}
 
-          {viewMode === 'map' ? (
-            <CityMap
-              incidents={alignedActiveIncidents}
-              markerColor={theme.markerColor}
-              deptScope={dept ? (dept as Incident['dept']) : role}
-              incidentSource="input-only"
-              enableTransientIncidents={false}
-              onIncidentClick={setFocusedIncident}
-              focusIncident={focusedIncident}
-            />
-          ) : (
-            <CameraGrid incidents={alignedActiveIncidents} />
-          )}
+      {currentView === 'reports' && (
+        <ReportsFullScreenView incidents={alignedActiveIncidents} role={role} />
+      )}
 
-          <div ref={reportsRef} id="reports-panel">
-            <NeuralStream logs={neuralLogs} />
-          </div>
-        </section>
-
-        <aside className="col-span-10 lg:col-span-3 h-full rounded border-2 border-slate-300 bg-white shadow-sm overflow-hidden flex flex-col" ref={incidentsRef} id="incidents-panel">
-          <div className="px-4 py-3 border-b-2 border-slate-300 bg-slate-50">
-            <h3 className="text-sm font-semibold tracking-wide uppercase text-[#002147]">Live Work Queue</h3>
-            <p className="text-xs text-slate-700">Verified threats awaiting administrative action</p>
-          </div>
-
-          {showPotholePanel && (
-            <div className="mx-3 mt-3 rounded border-2 border-[#FF9933] bg-amber-50 px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold tracking-wide uppercase text-amber-900">POTHOLE HEATPOINTS</span>
-                <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
-                  {potholeIncidents.length}
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] text-amber-900">
-                {latestPothole
-                  ? `Latest: ${latestPothole.location} (${latestPothole.lat.toFixed(4)}, ${latestPothole.lng.toFixed(4)}) · ${formatElapsed(latestPothole.detectedAt)} ago`
-                  : 'No active pothole detections yet.'}
-              </p>
-            </div>
-          )}
-
-          <div className="mx-3 mt-3 rounded border-2 border-slate-300 bg-slate-50 px-3 py-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold tracking-wide uppercase text-[#002147]">Available Units</span>
-              <span className="rounded bg-white px-2 py-0.5 text-[11px] font-bold text-slate-700">
-                {units.filter((unit) => unit.status === 'available').length}
-              </span>
-            </div>
-            <div className="mt-2 space-y-1.5">
-              {units.slice(0, 4).map((unit) => (
-                <div key={unit.id} className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-slate-700">{unit.id}</span>
-                  <span className={`font-medium ${unit.status === 'busy' ? 'text-amber-700' : unit.status === 'available' ? 'text-emerald-700' : 'text-slate-500'}`}>
-                    {unit.status.toUpperCase()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {alignedActiveIncidents.length === 0 && (
-              <div className="text-sm text-slate-500 p-3 border border-dashed border-slate-300 rounded-lg">
-                No verified incidents in queue.
-              </div>
-            )}
-
-            {alignedActiveIncidents.map((incident) => (
-              <ThreatCard
-                key={incident.id}
-                incidentId={incident.id}
-                type={incident.type}
-                location={incident.location}
-                elapsedText={formatElapsed(incident.detectedAt)}
-                loggedAt={formatLoggedAt(incident.detectedAt)}
-                zone={deriveZone(incident.location)}
-                wardName={incident.location}
-                formalIncidentId={buildFormalIncidentId(incident)}
-                dispatchPlan={incident.dispatchPlan}
-                dispatchLabel={resolveDispatchLabelForIncident(incident)}
-                status={incident.status}
-                disabled={incident.id.startsWith('SIM-')}
-                onDispatch={() => {
-                  if (incident.id.startsWith('SIM-')) {
-                    setToastMessage('Simulation incident is synced for map/queue realism only. Awaiting backend verification.');
-                    window.setTimeout(() => setToastMessage(null), 3500);
-                    return Promise.resolve({ auditHash: 'SIMULATED' });
-                  }
-                  setFocusedIncident(incident);
-                  return sendHitlAction(incident);
-                }}
-                onWhatsappAlert={incident.id.startsWith('SIM-') ? undefined : () => sendWhatsappAlert(incident)}
-              />
-            ))}
-          </div>
-        </aside>
-      </div>
+      {currentView === 'dashboard' && (
+        <DashboardView
+          incidents={alignedActiveIncidents}
+          role={role}
+          units={units}
+          neuralLogs={neuralLogs}
+          onDispatch={(incident) => {
+            if (incident.id.startsWith('SIM-')) {
+              setToastMessage('Simulation incident is synced for map/queue realism only. Awaiting backend verification.');
+              window.setTimeout(() => setToastMessage(null), 3500);
+              return Promise.resolve({ auditHash: 'SIMULATED' });
+            }
+            setFocusedIncident(incident);
+            return sendHitlAction(incident);
+          }}
+          onWhatsappAlert={(incident) => {
+            if (incident.id.startsWith('SIM-')) return Promise.resolve();
+            return sendWhatsappAlert(incident);
+          }}
+        />
+      )}
 
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 rounded border-2 border-[#138808] bg-emerald-50 px-4 py-2 shadow-sm">
